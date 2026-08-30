@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { registerAccessibleControl } from "../systems/Accessibility";
 
 export function bigButton(
   scene: Phaser.Scene,
@@ -32,6 +33,7 @@ export function bigButton(
   img.on("pointerdown", () => img.setDisplaySize(size * 0.92, size * 0.92));
   img.on("pointerout", () => img.setDisplaySize(size, size));
   c.setDepth(10);
+  registerAccessibleControl(scene, c, label, fire);
   return c;
 }
 

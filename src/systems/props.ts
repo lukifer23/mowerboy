@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { save } from "./Save";
 import type { Prop } from "./Layout";
 import type { TerrainId } from "../data/levels";
 import { resolveCircleObstacle } from "./worldGeometry";
@@ -168,7 +169,7 @@ export function spawnProps(scene: Phaser.Scene, props: Prop[], terrain?: Terrain
     img.setRotation(p.rotation ?? 0);
     img.setData("prop", p);
     img.setData("baseRotation", p.rotation ?? 0);
-    if (p.kind === "pond") {
+    if (p.kind === "pond" && !save().reducedMotion) {
       scene.tweens.add({ targets: img, scaleX: img.scaleX * 1.012, scaleY: img.scaleY * 0.992, alpha: 0.94, duration: 1500, yoyo: true, repeat: -1, ease: "Sine.InOut" });
     }
     if ((p.kind === "tree" || p.kind === "pine" || p.kind === "hedge") && !scene.game.device.os.desktop) {

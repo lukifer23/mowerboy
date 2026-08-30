@@ -1,10 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
+
+test.describe.configure({ mode: "serial" });
 
 const MOWERS = ["sprout","backyard","zipturn","yardking","wideboy","farmhand","storm","nightowl","sidekick","meadowranger","gardenscout","utilitymate","fieldgiant","pivotranger"];
 const LEVELS = ["home","flowers","park","soccer","meadow","farm","neighborhood","hillside","orchard","autumn","community","estate","creekside","school","fairgrounds","moonlight","big-acreage","tractor-field","lakeside-park","forest-clearing"];
 const VACUUMS = ["brightupright","cyclone","quickstick","trailercan","workhorse","roundabout","hallkeeper","floorrider"];
 const ROOMS = ["living","kitchen","playroom","bedroom","hallway","dining","sunroom","mudroom","workshop","classroom","library","community"];
-const SAVE = { version:4, selectedMower:"backyard", selectedVacuum:"brightupright", selectedRoom:"living", completedYards:[], visitedYards:[], cleanedRooms:[], visitedRooms:[], lastActivity:"mow", control:"magnet", volumes:{master:0,engine:0,world:0}, muted:true, reducedMotion:true, highContrast:false, seenTutorial:true, seenVacuumTutorial:true, safeHome:false };
+const SAVE = { version:5, selectedMower:"backyard", selectedVacuum:"brightupright", selectedRoom:"living", selectedYard:{kind:"authored",id:"home"}, completedYards:[], visitedYards:[], cleanedRooms:[], visitedRooms:[], lastActivity:"mow", control:"magnet", volumes:{master:0,engine:0,world:0}, muted:true, reducedMotion:true, highContrast:false, seenTutorial:true, seenVacuumTutorial:true, safeHome:false };
 
 async function boot(page:Page,url:string,scene:string){
   await page.goto(url);
@@ -49,3 +51,25 @@ test("Pause, Quiet, and Finish are live child-safe controls",async({page})=>{
   await page.touchscreen.tap(hud.muteX,hud.y);await expect.poll(async()=>page.evaluate(()=>JSON.parse(localStorage.getItem("mowerboy-save-v1")!).muted)).toBe(false);
   await page.touchscreen.tap(hud.finishX,hud.secondaryY);await expect.poll(async()=>page.evaluate(()=>window.__MOWERBOY_TEST__!.snapshot().flags.celebrated),{timeout:12_000}).toBe(true);
 });
+
+test("two cold clients reach playable scenes together",async({browser}: { browser: Browser })=>{
+  const contexts=await Promise.all([0,1].map(()=>browser.newContext({viewport:{width:832,height:749},hasTouch:true,isMobile:true})));
+  try{
+    const pages=await Promise.all(contexts.map(async context=>{await context.addInitScript(value=>localStorage.setItem("mowerboy-save-v1",JSON.stringify(value)),SAVE);return context.newPage();}));
+    await Promise.all([
+      boot(pages[0],"/?test=1&activity=mow&level=home&mower=backyard","play"),
+      boot(pages[1],"/?test=1&activity=vacuum&room=living&vacuum=brightupright","vacuum-play"),
+    ]);
+    for(const page of pages)expect((await page.evaluate(()=>window.__MOWERBOY_TEST__!.snapshot())).diagnostics?.lifecycle.cameras).toBe(2);
+  }finally{await Promise.all(contexts.map(context=>context.close()));}
+});
+
+test("canvas controls have keyboard and screen-reader mirrors",async({page})=>{
+  await boot(page,"/?test=1&screen=title","title");
+  await expect(page.getByRole("button",{name:COPY_NAME("Mowers")})).toBeAttached();
+  await expect(page.getByRole("button",{name:COPY_NAME("Settings")})).toBeAttached();
+  await page.getByRole("button",{name:COPY_NAME("Settings")}).focus();
+  await expect(page.getByRole("button",{name:COPY_NAME("Settings")})).toBeFocused();
+});
+
+function COPY_NAME(value:string){return new RegExp(`^${value}`);}

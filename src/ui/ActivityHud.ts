@@ -4,6 +4,7 @@ import { audio } from "../systems/AudioEngine";
 import { persist, save } from "../systems/Save";
 import { getViewport, playHudLayout } from "../systems/Viewport";
 import { bigButton } from "./BigButton";
+import { announce, setAccessibleLabel } from "../systems/Accessibility";
 
 export interface ActivityHudActions {
   home: () => void;
@@ -32,6 +33,7 @@ export class ActivityHud {
     mute: Phaser.GameObjects.Container;
     finish: Phaser.GameObjects.Container;
   };
+  private announcedBucket = -1;
 
   constructor(scene: Phaser.Scene, actions: ActivityHudActions, initialLabel: string) {
     this.scene = scene;
@@ -44,6 +46,7 @@ export class ActivityHud {
       audio.applyVolumes();
       (mute.getAt(0) as Phaser.GameObjects.Image).setTexture(save().muted ? "icon-mute" : "icon-speaker");
       (mute.getAt(1) as Phaser.GameObjects.Text).setText(save().muted ? COPY.unmute : COPY.mute);
+      setAccessibleLabel(mute, save().muted ? COPY.unmute : COPY.mute);
     }, 80);
     const finish = bigButton(scene, 0, 0, "icon-wand", COPY.helper, actions.finish, 80);
     this.progress = scene.add.graphics();
@@ -105,5 +108,10 @@ export class ActivityHud {
     this.progress.arc(0, 0, 21, -Math.PI / 2, -Math.PI / 2 + Math.max(0.02, p) * Math.PI * 2, false);
     this.progress.strokePath();
     this.progressText.setText(label);
+    const bucket = Math.floor(p * 10);
+    if (bucket !== this.announcedBucket && bucket > 0) {
+      this.announcedBucket = bucket;
+      announce(label);
+    }
   }
 }

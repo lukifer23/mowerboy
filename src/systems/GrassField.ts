@@ -8,10 +8,10 @@ import {
   HEIGHT_SHORT,
   HEIGHT_TALL,
   HEIGHT_WILD,
-  completion,
   cutRemainingSlice,
   cutWithDeck,
   growRandom,
+  mowableCount,
   remainingCells,
 } from "./grassMath";
 import type { Layout } from "./Layout";
@@ -54,6 +54,8 @@ export class GrassField {
   private texturePattern?: CanvasPattern | null;
   private cutTexturePattern?: CanvasPattern | null;
   private helperCursor = 0;
+  private readonly mowable: number;
+  private remaining: number;
 
   constructor(scene: Phaser.Scene, layout: Layout, terrain: TerrainId) {
     this.cols = layout.cols;
@@ -65,6 +67,8 @@ export class GrassField {
     this.worldW = layout.worldW;
     this.worldH = layout.worldH;
     this.terrain = terrain;
+    this.mowable = mowableCount(this.height);
+    this.remaining = remainingCells(this.height, this.cols).length;
     this.pal = save().highContrast ? HIGH_CONTRAST : PALETTES[terrain];
     this.chunkCols = Math.ceil(this.cols / CHUNK_CELLS);
     this.sprite = scene.add.container(0, 0).setDepth(0);
@@ -99,7 +103,7 @@ export class GrassField {
   }
 
   get percent(): number {
-    return completion(this.height);
+    return this.mowable <= 0 ? 1 : Math.max(0, Math.min(1, 1 - this.remaining / this.mowable));
   }
 
   isMowableAt(x: number, y: number): boolean {
@@ -138,6 +142,7 @@ export class GrassField {
       mulch
     );
     if (cut > 0) {
+      this.remaining = Math.max(0, this.remaining - cut);
       this.markAround(mx, my, Math.max(deckW, deckL) * 0.7 + this.cellSize);
       if (mulch) {
         for (const i of this.dirty) if (this.height[i] === HEIGHT_CUT) this.mulched[i] = 1;
@@ -149,7 +154,10 @@ export class GrassField {
 
   grow(count: number, rng: () => number, maxH = HEIGHT_TALL): number {
     const grown = growRandom(this.height, count, rng, maxH);
-    if (grown > 0) this.paintAll();
+    if (grown > 0) {
+      this.remaining = remainingCells(this.height, this.cols).length;
+      this.paintAll();
+    }
     return grown;
   }
 
@@ -157,12 +165,13 @@ export class GrassField {
     const slice = cutRemainingSlice(this.height, this.helperCursor, n);
     this.helperCursor = slice.next;
     for (const idx of slice.indices) this.dirty.add(idx);
+    this.remaining = Math.max(0, this.remaining - slice.indices.length);
     if (slice.indices.length) this.flush();
     return slice.indices.length;
   }
 
   get remainingCount(): number {
-    return remainingCells(this.height, this.cols).length;
+    return this.remaining;
   }
 
   destroy(): void {
@@ -229,7 +238,12 @@ export class GrassField {
       const stripeAngle = (this.heading[i] / 8) * Math.PI * 2;
       const facingLight = Math.cos(stripeAngle - 0.72);
       const base = facingLight >= 0 ? pal.cutA : pal.cutB;
-      const lift = facingLight * (save().highContrast ? 14 : 9);
+      // Broad reflective bands remain readable after the world camera scales
+      // the seven-unit cells down on phones. Direction is still the primary
+      // cue, while this alternating lift keeps adjacent passes distinct.
+      const across = c * -Math.sin(stripeAngle) + r * Math.cos(stripeAngle);
+      const band = (Math.floor(across / 6) & 1) === 0 ? 1 : -1;
+      const lift = facingLight * (save().highContrast ? 22 : 15) + band * (save().highContrast ? 8 : 5);
       col = base.map((v) => Math.max(0, Math.min(255, v + lift))) as [number, number, number];
     }
     else if (h === HEIGHT_SHORT) col = pal.short;
@@ -246,6 +260,21 @@ export class GrassField {
 
     chunk.ctx.fillStyle = `rgb(${col[0] | 0},${col[1] | 0},${col[2] | 0})`;
     chunk.ctx.fillRect(x, y, s, s);
+
+    if (h === HEIGHT_CUT) {
+      const isTall = (dc: number, dr: number) => {
+        const nc = c + dc, nr = r + dr;
+        if (nc < 0 || nr < 0 || nc >= this.cols || nr >= this.rows) return false;
+        const neighbor = this.height[nr * this.cols + nc];
+        return neighbor >= HEIGHT_SHORT && neighbor !== 255;
+      };
+      chunk.ctx.fillStyle = "rgba(223,244,174,0.24)";
+      if (isTall(-1, 0)) chunk.ctx.fillRect(x, y, 1.4, s);
+      if (isTall(0, -1)) chunk.ctx.fillRect(x, y, s, 1.4);
+      chunk.ctx.fillStyle = "rgba(20,66,24,0.26)";
+      if (isTall(1, 0)) chunk.ctx.fillRect(x + s - 1.4, y, 1.4, s);
+      if (isTall(0, 1)) chunk.ctx.fillRect(x, y + s - 1.4, s, 1.4);
+    }
 
     if (h === 255 && this.heading[i] === 254) {
       // Driveways and paths are continuous authored surfaces. Sparse aggregate

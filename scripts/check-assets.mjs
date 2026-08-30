@@ -4,19 +4,9 @@ import { fileURLToPath } from "node:url";
 import { inflateSync } from "node:zlib";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const illustratedMowers = ["sprout", "backyard", "zipturn", "yardking", "wideboy", "farmhand", "storm", "nightowl", "sidekick", "meadowranger", "gardenscout", "utilitymate", "fieldgiant", "pivotranger"];
-const mowerPortraits = illustratedMowers.filter((id) => !["gardenscout", "utilitymate", "fieldgiant", "pivotranger"].includes(id));
-const illustratedVacuums = ["brightupright", "cyclone", "quickstick", "trailercan", "workhorse", "roundabout", "hallkeeper", "floorrider"];
-const required = [
-  "public/assets/title.jpg", "public/assets/icon.png", "public/assets/grass-lush-v2.png", "public/assets/grass-cut-v2.png",
-  "public/assets/fence-cedar-v2.png", "public/assets/tree-canopy-v2.png", "public/assets/pond-v2.png", "public/assets/flowerbed-v2.png",
-  "public/assets/house-v2.png", "public/assets/rock-v2.png", "public/assets/tree-autumn-v2.png", "public/assets/tree-dry-v2.png",
-  "public/assets/hay-bales-v2.png", "public/assets/park-bench-v2.png",
-  "public/assets/environment/barn-red-v3.png",
-  ...illustratedMowers.map((id) => `public/assets/mowers/${id}.png`),
-  ...mowerPortraits.map((id) => `public/assets/portraits/${id}.jpg`),
-  ...illustratedVacuums.map((id) => `public/assets/vacuums/${id}.png`),
-];
+const assetManifest = JSON.parse(await readFile(resolve(root, "src/data/asset-manifest.json"), "utf8"));
+const catalogUrls = [assetManifest.core, assetManifest.mow, assetManifest.vacuum].flat();
+const required = catalogUrls.map((url) => `public/${url.replace(/^\.\//, "")}`);
 
 const failures = [];
 let bytes = 0;
@@ -36,8 +26,7 @@ for (const relative of required) {
 }
 
 try {
-  const manifest = JSON.parse(await readFile(resolve(root, "public/asset-manifest.json"), "utf8"));
-  const packed = new Set([manifest.core, manifest.mow, manifest.vacuum].flat());
+  const packed = new Set(catalogUrls);
   for (const relative of required) {
     const url = `./${relative.replace(/^public\//, "")}`;
     if (!packed.has(url)) failures.push(`${relative}: missing from production asset manifest`);

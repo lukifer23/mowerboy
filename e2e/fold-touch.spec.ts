@@ -1,10 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const SAVE = {
-  version: 4,
+  version: 5,
   selectedMower: "backyard",
   selectedVacuum: "brightupright",
   selectedRoom: "living",
+  selectedYard: { kind: "authored", id: "home" },
   completedYards: [],
   visitedYards: [],
   cleanedRooms: [],

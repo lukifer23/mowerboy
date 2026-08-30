@@ -5,12 +5,16 @@ import { VACUUMS } from "../data/vacuums";
 
 export type ControlScheme = "magnet" | "tap" | "cruise" | "pad";
 export type Activity = "mow" | "vacuum";
+export type SelectedYard =
+  | { kind: "authored"; id: string }
+  | { kind: "wander"; seed: number };
 
 export interface SaveData {
   version: number;
   selectedMower: string;
   selectedVacuum: string;
   selectedRoom: string;
+  selectedYard: SelectedYard;
   completedYards: string[];
   visitedYards: string[];
   cleanedRooms: string[];
@@ -39,10 +43,11 @@ type StoredSave = Partial<SaveData> & {
 };
 
 export const DEFAULT_SAVE: SaveData = {
-  version: 4,
+  version: 5,
   selectedMower: "backyard",
   selectedVacuum: "brightupright",
   selectedRoom: "living",
+  selectedYard: { kind: "authored", id: "home" },
   completedYards: [],
   visitedYards: [],
   cleanedRooms: [],
@@ -64,10 +69,11 @@ export function migrateForTest(raw: StoredSave | null): SaveData {
 
 function migrate(raw: StoredSave | null): SaveData {
   const d: SaveData = {
-    version: 4,
+    version: 5,
     selectedMower: MOWER_IDS.has(raw?.selectedMower ?? "") ? raw!.selectedMower! : DEFAULT_SAVE.selectedMower,
     selectedVacuum: VACUUM_IDS.has(raw?.selectedVacuum ?? "") ? raw!.selectedVacuum! : DEFAULT_SAVE.selectedVacuum,
     selectedRoom: ROOM_IDS.has(raw?.selectedRoom ?? "") ? raw!.selectedRoom! : DEFAULT_SAVE.selectedRoom,
+    selectedYard: validSelectedYard(raw?.selectedYard, raw?.visitedYards),
     completedYards: validIds(raw?.completedYards, YARD_IDS),
     visitedYards: validIds(raw?.visitedYards, YARD_IDS),
     cleanedRooms: validIds(raw?.cleanedRooms, ROOM_IDS),
@@ -87,6 +93,23 @@ function migrate(raw: StoredSave | null): SaveData {
   d.volumes.engine = clamp01(d.volumes.engine);
   d.volumes.world = clamp01(d.volumes.world);
   return d;
+}
+
+function validSelectedYard(value: unknown, visited: unknown): SelectedYard {
+  if (value && typeof value === "object") {
+    const candidate = value as { kind?: unknown; id?: unknown; seed?: unknown };
+    if (candidate.kind === "authored" && typeof candidate.id === "string" && LEVELS.some((level) => level.id === candidate.id)) {
+      return { kind: "authored", id: candidate.id };
+    }
+    if (candidate.kind === "wander" && typeof candidate.seed === "number" && Number.isInteger(candidate.seed)) {
+      return { kind: "wander", seed: candidate.seed >>> 0 };
+    }
+  }
+  if (Array.isArray(visited)) {
+    const authored = visited.find((id): id is string => typeof id === "string" && LEVELS.some((level) => level.id === id));
+    if (authored) return { kind: "authored", id: authored };
+  }
+  return { ...DEFAULT_SAVE.selectedYard };
 }
 
 function clamp01(n: number): number {
@@ -143,10 +166,14 @@ export function completeYard(id: string): void {
   persist();
 }
 
-export function visitYard(id: string): void {
+export function visitYard(id: string, wanderSeed?: number): void {
   const s = save();
   // Most-recent first makes Free Mow continue the place the child just chose.
   s.visitedYards = [id, ...s.visitedYards.filter((yardId) => yardId !== id)];
+  s.selectedYard = id === "wander" && wanderSeed !== undefined
+    ? { kind: "wander", seed: wanderSeed >>> 0 }
+    : { kind: "authored", id: YARD_IDS.has(id) && id !== "wander" ? id : "home" };
+  s.lastActivity = "mow";
   persist();
 }
 

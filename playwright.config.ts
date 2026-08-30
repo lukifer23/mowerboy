@@ -11,6 +11,11 @@ const viewports = [
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
+  // Phaser boot performs real canvas and production-art work. Six concurrent
+  // mobile contexts could starve the dev server long enough to produce a
+  // blank boot even though each flow was healthy in isolation. Two workers
+  // still exercise concurrent clients while keeping the release gate stable.
+  workers: 2,
   timeout: 30_000,
   expect: { timeout: 8_000 },
   reporter: [["list"], ["html", { outputFolder: ".gstack/playwright-report", open: "never" }]],

@@ -6,6 +6,7 @@ import { audio } from "../systems/AudioEngine";
 import { PALETTES } from "../systems/palette";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { bigButton, labelText } from "../ui/BigButton";
+import { registerAccessibleControl } from "../systems/Accessibility";
 
 export class MapScene extends Phaser.Scene {
   private layer?: Phaser.GameObjects.Container;
@@ -51,7 +52,7 @@ export class MapScene extends Phaser.Scene {
       fontFamily: "system-ui", fontSize: `${v.compact ? 18 : 22}px`, color: "#fff59d", fontStyle: "bold",
       stroke: "#102418", strokeThickness: 5,
     }).setOrigin(1, 0.5);
-    this.add.text(w / 2, v.safe.top + 88, "Pick any yard • no rush", {
+    this.add.text(w / 2, v.safe.top + 88, COPY.anyYard, {
       fontFamily: "system-ui", fontSize: `${v.compact ? 16 : 18}px`, color: "#c8e6c9", fontStyle: "bold",
     }).setOrigin(0.5);
     this.layer = this.add.container(0, 0);
@@ -91,7 +92,7 @@ export class MapScene extends Phaser.Scene {
         strokeThickness: 4,
       }).setOrigin(0.5);
       const badge = this.add.image(x + cardW * 0.32, y - cardH * 0.34, done ? "icon-check" : "icon-play").setDisplaySize(44, 44);
-      if (next && !done) {
+      if (next && !done && !save().reducedMotion) {
         const baseScaleX = badge.scaleX;
         const baseScaleY = badge.scaleY;
         this.tweens.add({
@@ -110,6 +111,11 @@ export class MapScene extends Phaser.Scene {
         if (item.wander) this.scene.start("play", { wander: Date.now() & 0xffff });
         else this.scene.start("play", { levelId: item.level!.id });
       });
+      registerAccessibleControl(this, card, name, () => {
+        audio.unlock();
+        if (item.wander) this.scene.start("play", { wander: Date.now() & 0xffff });
+        else this.scene.start("play", { levelId: item.level!.id });
+      });
       this.layer!.add([card, preview, text, badge]);
     });
 
@@ -122,7 +128,14 @@ export class MapScene extends Phaser.Scene {
     free.on("pointerup", () => {
       if (this.dragDistance > 12) return;
       audio.unlock();
-      this.scene.start("play", { levelId: save().visitedYards[0] ?? "home", freeMow: true });
+      const yard = save().selectedYard;
+      this.scene.start("play", yard.kind === "wander"
+        ? { wander: yard.seed, freeMow: true }
+        : { levelId: yard.id, freeMow: true });
+    });
+    registerAccessibleControl(this, free, COPY.freeMow, () => {
+      audio.unlock(); const yard = save().selectedYard;
+      this.scene.start("play", yard.kind === "wander" ? { wander: yard.seed, freeMow: true } : { levelId: yard.id, freeMow: true });
     });
     this.layer.add([free, freeText]);
     const contentBottom = freeY + 65;

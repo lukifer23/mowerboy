@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { RoomDef } from "../data/rooms";
-import { debrisCompletion, helperClean, scatterDebris, stepSuction, type DebrisParticle, type DebrisType, type VacuumPose } from "./debrisMath";
+import { debrisCompletion, helperCleanInPlace, scatterDebris, stepSuctionInPlace, type DebrisParticle, type DebrisType, type VacuumPose } from "./debrisMath";
 import type { RoomProp } from "./RoomLayout";
 import { safeDebrisPoint } from "./RoomLayout";
 
@@ -13,6 +13,8 @@ export class DebrisField {
   particles: DebrisParticle[];
   readonly views = new Map<number, Phaser.GameObjects.Image>();
   private helperIndex = 0;
+  private remaining = 0;
+  private completionValue = 0;
   constructor(scene: Phaser.Scene, room: RoomDef, obstacles: RoomProp[]) {
     ensureDebrisTextures(scene);
     const perType = Math.max(28, Math.round(190 / room.debris.length));
@@ -28,6 +30,7 @@ export class DebrisField {
       counts.set(p.type, (counts.get(p.type) ?? 0) + 1);
     }
     this.particles = chosen;
+    this.remaining = chosen.length;
     for (const p of this.particles) {
       const image = scene.add.image(p.x, p.y, `debris-${p.type}`).setRotation(p.angle).setDepth(2);
       image.setScale(0.76 + p.total * 0.22);
@@ -35,21 +38,23 @@ export class DebrisField {
     }
   }
 
-  get percent(): number { return debrisCompletion(this.particles); }
-  get remainingCount(): number { return this.particles.reduce((n, p) => n + (p.removed ? 0 : 1), 0); }
+  get percent(): number { return this.completionValue; }
+  get remainingCount(): number { return this.remaining; }
 
   clean(pose: VacuumPose, dt: number): { cleaned: number; impacts: DebrisType[] } {
-    const result = stepSuction(this.particles, pose, dt);
-    this.particles = result.particles;
-    this.syncViews();
+    const result = stepSuctionInPlace(this.particles, pose, dt);
+    this.remaining = Math.max(0, this.remaining - result.impacts.length);
+    if (result.cleaned > 0) this.completionValue = debrisCompletion(this.particles);
+    this.syncViews(result.dirty);
     return { cleaned: result.cleaned, impacts: result.impacts };
   }
 
   helperStep(maxParticles: number): number {
-    const result = helperClean(this.particles, this.helperIndex, maxParticles);
-    this.particles = result.particles;
+    const result = helperCleanInPlace(this.particles, this.helperIndex, maxParticles);
     this.helperIndex = result.next;
-    this.syncViews();
+    this.remaining = Math.max(0, this.remaining - result.cleaned);
+    if (result.cleaned > 0) this.completionValue = debrisCompletion(this.particles);
+    this.syncViews(result.dirty);
     return result.cleaned;
   }
 
@@ -58,8 +63,10 @@ export class DebrisField {
     this.views.clear();
   }
 
-  private syncViews(): void {
-    for (const p of this.particles) {
+  private syncViews(ids: number[]): void {
+    for (const id of ids) {
+      const p = this.particles[id];
+      if (!p) continue;
       const view = this.views.get(p.id);
       if (!view) continue;
       if (p.removed) { view.setVisible(false); continue; }

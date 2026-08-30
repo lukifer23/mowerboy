@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
-const root = resolve(new URL("..", import.meta.url).pathname);
+const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const port = 5174;
 const origin = `http://127.0.0.1:${port}`;
-const vite = spawn(process.execPath, [resolve(root, "node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
+const vite = spawn("node", [resolve(root, "node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
   cwd: root,
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -50,13 +51,13 @@ try {
   console.log("Offline check: service worker controls navigation.");
   await page.waitForFunction(async () => {
     const names = await caches.keys();
-    const name = names.find((item) => item.startsWith("mowerboy-v6-"));
+    const name = names.find((item) => item.startsWith("mowerboy-release-"));
     if (!name) return false;
     return (await (await caches.open(name)).keys()).length >= 52;
   });
   console.log("Offline check: shell and production packs cached.");
   await page.evaluate(() => localStorage.setItem("mowerboy-save-v1", JSON.stringify({
-    version: 4, selectedMower: "fieldgiant", selectedVacuum: "floorrider", selectedRoom: "community",
+    version: 5, selectedMower: "fieldgiant", selectedVacuum: "floorrider", selectedRoom: "community", selectedYard: { kind: "authored", id: "tractor-field" },
     completedYards: [], visitedYards: [], cleanedRooms: [], visitedRooms: [], lastActivity: "mow", control: "magnet",
     volumes: { master: 0, engine: 0, world: 0 }, muted: true, reducedMotion: true, highContrast: false,
     seenTutorial: true, seenVacuumTutorial: true, safeHome: true,
@@ -74,7 +75,7 @@ try {
   if (vacuum.render.machineTexture !== "vacuum-world-floorrider") throw new Error(`offline vacuum art missing: ${vacuum.render.machineTexture}`);
   console.log("Offline check: vacuum scene and Floor Rider art loaded.");
   if (errors.length) throw new Error(`offline console errors:\n${errors.join("\n")}`);
-  console.log("Offline production check passed: cached shell + all 47 assets, Mow and Vacuum production art loaded.");
+  console.log("Offline production check passed: cached shell + all 59 assets, Mow and Vacuum production art loaded.");
   await context.close();
 } catch (error) {
   console.error(error instanceof Error ? error.stack : error);

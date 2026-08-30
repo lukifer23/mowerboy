@@ -36,3 +36,37 @@ canvas {
   height: 100% !important;
   touch-action: none;
 }
+
+#mowerboy-a11y {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.mowerboy-a11y-control {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  opacity: 0.001;
+  pointer-events: none;
+}
+
+.mowerboy-a11y-control:focus-visible {
+  opacity: 1;
+  outline: 5px solid #fff176;
+  outline-offset: 4px;
+  border-radius: 18px;
+}
+
+.mowerboy-live-region {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

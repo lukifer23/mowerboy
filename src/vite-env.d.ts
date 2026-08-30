@@ -30,7 +30,18 @@ interface Window {
           target: { x: number; y: number } | null;
           pad: { up: boolean; down: boolean; left: boolean; right: boolean };
         };
+        lifecycle: {
+          cameras: number;
+          textures: number;
+          tweens: number;
+          inputListeners: number;
+          frameMs: { samples: number; p50: number; p95: number; worst: number };
+        };
       } | null;
+      boot: { phase: "loading" | "ready"; milliseconds: number | null; recovery: "none" | "fallback" };
+      selectedPlace: { kind: "authored"; id: string } | { kind: "wander"; seed: number };
+      audio: { state: string; persistentSources: number };
+      resources: { dynamicTextures: number; activeCameras: number };
       render: { machineTexture: string | null; propKinds: string[] };
       ui: { galleryIndex: number | null; scrollOffset: number | null };
       flags: { paused: boolean; tutorial: boolean; helperOn: boolean; celebrated: boolean };

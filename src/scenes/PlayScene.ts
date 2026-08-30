@@ -15,8 +15,9 @@ import { mulberry32 } from "../systems/grassMath";
 import { bigButton, labelText } from "../ui/BigButton";
 import { bindSceneResize, composeCamera, getViewport, playHudLayout } from "../systems/Viewport";
 import { ActivityHud } from "../ui/ActivityHud";
-import { queueMowerAsset, queueMowingWorldAssets } from "../systems/AssetCatalog";
+import { queueMowerAsset, queueMowingWorldAssets, showLoadOverlay, type LoadOverlay } from "../systems/AssetCatalog";
 import { rectOf, worldBoundsToScreen, type ActivityDiagnostics } from "../systems/Diagnostics";
+import { ActivityLifecycle } from "../systems/ActivityLifecycle";
 
 interface ActivePower {
   id: PowerupId;
@@ -64,6 +65,9 @@ export class PlayScene extends Phaser.Scene {
   private lastHomeTap = -10000;
   private homeConfirm?: Phaser.GameObjects.Text;
   private cleanedUp = false;
+  private loading?: LoadOverlay;
+  private lifecycle!: ActivityLifecycle;
+  private collisionProps: Parameters<typeof softCollide>[3] = [];
 
   diagnostics(): ActivityDiagnostics {
     const viewport = getViewport(this);
@@ -78,6 +82,7 @@ export class PlayScene extends Phaser.Scene {
         assetMode: this.mower.assetMode,
       },
       input: this.drive.diagnostics(),
+      lifecycle: this.lifecycle.diagnostics(),
     };
   }
 
@@ -86,33 +91,40 @@ export class PlayScene extends Phaser.Scene {
   }
 
   preload(): void {
+    this.loading = showLoadOverlay(this, "Opening the yard");
     const data = this.scene.settings.data as { mowerId?: string } | undefined;
     queueMowingWorldAssets(this);
     queueMowerAsset(this, data?.mowerId ?? save().selectedMower);
   }
 
   create(): void {
+    this.loading?.destroy();
     this.cleanedUp = false;
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
+    this.lifecycle = new ActivityLifecycle(this, "mow", {
+      pause: () => { if (!this.paused) this.togglePause(); },
+      resume: () => { if (this.paused) this.togglePause(); },
+      finish: () => this.startFinish(),
+      progress: () => this.grass?.percent ?? 0,
+    });
+    this.lifecycle.addCleanup(() => this.cleanup());
     this.input.addPointer(2);
     this.input.setTopOnly(true);
-    this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height, false, "ui");
-    this.uiCam.setScroll(0, 0);
-    this.uiCam.setZoom(1);
+    this.uiCam = this.lifecycle.uiCamera;
 
     const data = this.scene.settings.data as { levelId?: string; mowerId?: string; freeMow?: boolean; wander?: number } | undefined;
     this.freeMow = Boolean(data?.freeMow);
-    this.levelId = data?.levelId ?? "home";
+    this.levelId = data?.wander !== undefined ? "wander" : data?.levelId ?? "home";
     const level =
       this.levelId.startsWith("wander") || data?.wander
         ? wanderLevel(data?.wander ?? (Date.now() & 0xffff))
         : levelById(this.levelId);
     this.terrain = level.terrain;
-    visitYard(level.id.startsWith("wander") ? "wander" : level.id);
+    visitYard(level.id.startsWith("wander") ? "wander" : level.id, data?.wander);
 
     const layout = buildLayout(level, this.levelId.length * 13);
     this.grass = new GrassField(this, layout, level.terrain);
     this.props = spawnProps(this, layout.props, level.terrain);
+    this.collisionProps = layout.props.filter((prop) => prop.kind !== "bridge");
 
     const def = mowerById(data?.mowerId ?? save().selectedMower);
     this.mower = new Mower(this, def, layout.startX, layout.startY);
@@ -148,7 +160,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private pinUI(obj: Phaser.GameObjects.GameObject): void {
-    this.cameras.main.ignore(obj);
+    this.lifecycle.pinUI(obj);
   }
 
   private bindCameras(): void {
@@ -176,6 +188,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(_t: number, delta: number): void {
+    this.lifecycle.frame(delta);
     if (this.paused || this.tutLayer || this.celeLayer) {
       audio.setThrottle(0, false, 0);
       return;
@@ -194,7 +207,7 @@ export class PlayScene extends Phaser.Scene {
     this.drawTargetMarker();
     this.drawMowerEffects();
 
-    const hit = softCollide(this.mower.x, this.mower.y, this.mower.def.radius, this.grassProps());
+    const hit = softCollide(this.mower.x, this.mower.y, this.mower.def.radius, this.collisionProps);
     this.mower.x = hit.x;
     this.mower.y = hit.y;
     this.mower.clampTo(this.grass.worldW, this.grass.worldH);
@@ -295,12 +308,6 @@ export class PlayScene extends Phaser.Scene {
 
     this.drawPie(this.grass.percent);
     if (!this.celebrated && !this.freeMow && this.grass.percent >= 0.88) this.celebrate();
-  }
-
-  private grassProps() {
-    // Bridges are intentionally traversable: the deck passes over their
-    // boards while water beneath remains non-mowable.
-    return this.props.map((s) => s.getData("prop")).filter((p) => p.kind !== "bridge");
   }
 
   private fitZoom(w: number, h: number): void {
@@ -537,15 +544,9 @@ export class PlayScene extends Phaser.Scene {
   private buildHud(): void {
     this.hud = new ActivityHud(this, {
       home: () => this.goHome(),
-      pause: () => this.togglePause(),
-      finish: () => {
-        this.helperOn = true;
-        this.helperAcc = 0;
-        // The helper is a child-safety exit, not a slow bonus. Finish a yard in
-        // about eight seconds regardless of field resolution or refresh rate.
-        this.helperRate = Math.max(480, this.grass.remainingCount / 8);
-      },
-    }, "Make stripes");
+      pause: () => this.paused ? this.lifecycle.resume() : this.lifecycle.pause(),
+      finish: () => this.lifecycle.finish(),
+    }, COPY.stripes);
     this.powerHud = this.add.container(0, 0).setDepth(21).setScrollFactor(0);
     this.layoutHud();
   }
@@ -554,6 +555,12 @@ export class PlayScene extends Phaser.Scene {
     const v = getViewport(this);
     this.hud.layout();
     this.powerHud.setPosition(v.width / 2, v.height - v.safe.bottom - 50);
+  }
+
+  private startFinish(): void {
+    this.helperOn = true;
+    this.helperAcc = 0;
+    this.helperRate = Math.max(480, this.grass.remainingCount / 8);
   }
 
   private drawPie(p: number): void {
@@ -580,7 +587,7 @@ export class PlayScene extends Phaser.Scene {
     const g = this.targetMarker;
     g.clear();
     if (!target) return;
-    const pulse = 12 + Math.sin(this.time.now / 110) * 3;
+    const pulse = save().reducedMotion ? 14 : 12 + Math.sin(this.time.now / 110) * 3;
     g.lineStyle(3, 0xfff59d, 0.9);
     g.strokeCircle(target.x, target.y, pulse);
     g.lineStyle(2, 0xf4f1de, 0.65);
@@ -681,9 +688,7 @@ export class PlayScene extends Phaser.Scene {
 
   private relayout(): void {
     this.drive.abortInput();
-    const v = getViewport(this);
-    this.uiCam.setSize(v.width, v.height);
-    this.cameras.main.setSize(v.width, v.height);
+    this.lifecycle.resize();
     this.layoutHud();
     this.layoutPad();
     this.fitZoom(this.grass.worldW, this.grass.worldH);
@@ -755,6 +760,10 @@ export class PlayScene extends Phaser.Scene {
     this.tutLayer = layer;
     const bg = this.add.rectangle(w / 2, h / 2, w, h, 0x102418, 0.45).setInteractive();
     const msg = labelText(this, w / 2, h - 168, steps[0], 32);
+    const finger = this.add.circle(w / 2 - 62, h * .46, 25, 0xffd6b5, 1).setStrokeStyle(5, 0x5d4037);
+    const tip = this.add.circle(w / 2 - 62, h * .46 - 25, 12, 0xffd6b5, 1).setStrokeStyle(4, 0x5d4037);
+    const trail = this.add.rectangle(w / 2, h * .46, 128, 8, 0xfff176, .7).setOrigin(.5);
+    if (!save().reducedMotion) this.tweens.add({ targets: [finger, tip], x: `+=124`, duration: 1150, yoyo: true, repeat: -1, ease: "Sine.InOut" });
     let advance = () => {};
     const next = bigButton(this, w / 2, h - 88, "icon-play", COPY.play, () => advance(), 96);
     advance = () => {
@@ -769,7 +778,7 @@ export class PlayScene extends Phaser.Scene {
       msg.setText(steps[i]);
     };
     bg.on("pointerup", advance);
-    layer.add([bg, msg, next]);
+    layer.add([bg, trail, finger, tip, msg, next]);
     layer.setData("layout", { bg, msg, next });
     this.pinUI(layer);
   }

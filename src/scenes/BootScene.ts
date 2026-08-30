@@ -8,7 +8,7 @@ import { audio } from "../systems/AudioEngine";
 import { save } from "../systems/Save";
 import { VACUUMS } from "../data/vacuums";
 import { makeVacuumCanvas } from "../systems/drawVacuum";
-import { queueMowerAsset, queueVacuumAsset } from "../systems/AssetCatalog";
+import { queueMowerAsset, queueVacuumAsset, showLoadOverlay, type LoadOverlay } from "../systems/AssetCatalog";
 
 function addCanvas(scene: Phaser.Scene, key: string, canvas: HTMLCanvasElement): void {
   if (scene.textures.exists(key)) scene.textures.remove(key);
@@ -16,11 +16,15 @@ function addCanvas(scene: Phaser.Scene, key: string, canvas: HTMLCanvasElement):
 }
 
 export class BootScene extends Phaser.Scene {
+  private loading?: LoadOverlay;
+
   constructor() {
     super("boot");
   }
 
   preload(): void {
+    performance.mark("mowerboy-boot-start");
+    this.loading = showLoadOverlay(this, "Starting MowerBoy");
     this.load.image("title-art", "assets/title.jpg");
     this.load.image("app-icon", "assets/icon.png");
     queueMowerAsset(this, save().selectedMower);
@@ -31,6 +35,9 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.loading?.destroy();
+    performance.mark("mowerboy-boot-ready");
+    performance.measure("mowerboy-boot", "mowerboy-boot-start", "mowerboy-boot-ready");
     const iconKeys: [string, string][] = [
       ["icon-home", "home"],
       ["icon-pause", "pause"],
@@ -42,6 +49,10 @@ export class BootScene extends Phaser.Scene {
       ["icon-check", "check"],
       ["icon-garage", "garage"],
       ["icon-map", "map"],
+      ["icon-mower", "mower"],
+      ["icon-vacuum", "vacuum"],
+      ["icon-yard", "yard"],
+      ["icon-room", "room"],
       ["icon-rain", "rain"],
       ["icon-turbo", "turbo"],
       ["icon-fullscreen", "fullscreen"],

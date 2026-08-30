@@ -6,6 +6,7 @@ import { audio } from "../systems/AudioEngine";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { bigButton, labelText } from "../ui/BigButton";
 import { queueMowerGalleryAssets } from "../systems/AssetCatalog";
+import { registerAccessibleControl } from "../systems/Accessibility";
 
 export class GarageScene extends Phaser.Scene {
   private index = 0;
@@ -68,13 +69,17 @@ export class GarageScene extends Phaser.Scene {
       }).setOrigin(0.5);
       const detail = `${m.label}  •  ${m.deckWidth}\" deck`;
       const kind = this.add.text(x, y + cardH * 0.38, detail, { fontFamily: "system-ui", fontSize: `${v.compact ? 16 : 19}px`, color: "#c8e6c9", align: "center" }).setOrigin(0.5);
-      const ready = this.add.text(x, y + cardH * 0.46, selected ? "Ready" : "Tap to mow", { fontFamily: "system-ui", fontSize: `${v.compact ? 15 : 17}px`, color: selected ? "#fff59d" : "#f4f1de", fontStyle: "bold" }).setOrigin(0.5);
+      const ready = this.add.text(x, y + cardH * 0.46, selected ? COPY.ready : COPY.tapMow, { fontFamily: "system-ui", fontSize: `${v.compact ? 15 : 17}px`, color: selected ? "#fff59d" : "#f4f1de", fontStyle: "bold" }).setOrigin(0.5);
       bg.on("pointerup", () => {
         if (Math.abs(this.dragX) > 12 || i !== this.index) return;
         patchSave({ selectedMower: m.id });
         audio.setProfile(m.engine);
         audio.blip("tap");
         this.scene.start("play", { levelId: "home" });
+      });
+      registerAccessibleControl(this, bg, `${m.name}, ${selected ? COPY.ready : COPY.tapMow}`, () => {
+        if (i !== this.index) { this.index = i; this.snap(); return; }
+        patchSave({ selectedMower: m.id }); audio.setProfile(m.engine); audio.blip("tap"); this.scene.start("play", { levelId: "home" });
       });
       this.layer!.add([bg, art, name, kind, ready]);
     });
@@ -93,6 +98,7 @@ export class GarageScene extends Phaser.Scene {
     const c = this.add.circle(x, y, 40, 0x3d8b40, 0.96).setStrokeStyle(4, 0x1b5e20).setInteractive();
     this.add.text(x, y - 3, glyph, { fontFamily: "system-ui", fontSize: "54px", color: "#f4f1de", fontStyle: "bold" }).setOrigin(0.5);
     c.on("pointerup", click);
+    registerAccessibleControl(this, c, glyph === "‹" ? COPY.previousMower : COPY.nextMower, click);
   }
 
   private snap(animated = true): void {
@@ -104,6 +110,6 @@ export class GarageScene extends Phaser.Scene {
       return;
     }
     this.tweens.killTweensOf(this.layer);
-    this.tweens.add({ targets: this.layer, x, duration: 260, ease: "Cubic.Out" });
+    this.tweens.add({ targets: this.layer, x, duration: save().reducedMotion ? 0 : 260, ease: "Cubic.Out" });
   }
 }

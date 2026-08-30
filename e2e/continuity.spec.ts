@@ -3,10 +3,11 @@ import { expect, test, type CDPSession } from "@playwright/test";
 type ControlScheme = "magnet" | "tap" | "cruise" | "pad";
 
 const SAVE = {
-  version: 4,
+  version: 5,
   selectedMower: "backyard",
   selectedVacuum: "brightupright",
   selectedRoom: "library",
+  selectedYard: { kind: "authored", id: "home" },
   completedYards: [],
   visitedYards: [],
   cleanedRooms: [],
@@ -132,12 +133,14 @@ test("touch cancellation clears pointer and pad ownership in both activities", a
   for (const activity of activities) {
     for (const control of ["magnet", "pad"] as const) {
       await page.goto(activity.url);
+      await expect.poll(async () => page.evaluate(() => window.__MOWERBOY_TEST__?.snapshot().activeScenes ?? [])).toContain(activity.scene);
       await page.evaluate((value) => {
         const current = JSON.parse(localStorage.getItem("mowerboy-save-v1")!);
         localStorage.setItem("mowerboy-save-v1", JSON.stringify({ ...current, control: value }));
       }, control);
       await page.reload();
       await expect.poll(async () => page.evaluate(() => window.__MOWERBOY_TEST__?.snapshot().activeScenes ?? [])).toContain(activity.scene);
+      await expect.poll(async () => page.evaluate(() => window.__MOWERBOY_TEST__!.snapshot().diagnostics!.input.scheme)).toBe(control);
       const viewport = page.viewportSize()!;
       const point = control === "pad"
         ? { x: 132, y: viewport.height - 194 }

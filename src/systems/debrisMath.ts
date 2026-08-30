@@ -141,6 +141,55 @@ export function stepSuction(
   return { particles, cleaned, impacts };
 }
 
+/** Allocation-free runtime variant. Pure stepSuction remains for tests/tools. */
+export function stepSuctionInPlace(
+  particles: DebrisParticle[],
+  pose: VacuumPose,
+  dt: number
+): { cleaned: number; impacts: DebrisType[]; dirty: number[] } {
+  const impacts: DebrisType[] = [];
+  const dirty: number[] = [];
+  let cleaned = 0;
+  const cos = Math.cos(pose.heading);
+  const sin = Math.sin(pose.heading);
+  const intakeX = pose.x + cos * pose.intakeOffset;
+  const intakeY = pose.y + sin * pose.intakeOffset;
+  const halfW = pose.intakeWidth / 2;
+  const halfD = pose.intakeDepth / 2;
+  const pullRadius = Math.max(pose.intakeWidth * 0.92, pose.intakeDepth * 2.3);
+  for (const particle of particles) {
+    if (particle.removed) continue;
+    const dx = particle.x - intakeX;
+    const dy = particle.y - intakeY;
+    const forward = dx * cos + dy * sin;
+    const side = -dx * sin + dy * cos;
+    const distance = Math.hypot(forward, side);
+    const resistance = RESISTANCE[particle.type];
+    if (Math.abs(side) <= halfW && Math.abs(forward) <= halfD) {
+      const before = particle.amount;
+      particle.amount = Math.max(0, particle.amount - (pose.power * dt * 3.4) / resistance);
+      cleaned += before - particle.amount;
+      particle.angle += dt * (4 + pose.power * 8) / resistance;
+      dirty.push(particle.id);
+      if (particle.amount <= 0.001) {
+        particle.amount = 0;
+        particle.removed = true;
+        impacts.push(particle.type);
+      }
+    } else if (distance < pullRadius && forward > -pose.intakeDepth) {
+      const falloff = 1 - distance / pullRadius;
+      const pull = (pose.power * falloff * falloff * dt * 150) / resistance;
+      if (distance > 0.001) {
+        particle.x -= (dx / distance) * pull;
+        particle.y -= (dy / distance) * pull;
+      }
+      particle.angle += dt * falloff * (particle.type === "leaf" || particle.type === "cereal" ? 9 : 3);
+      dirty.push(particle.id);
+    }
+  }
+  return { cleaned, impacts, dirty };
+}
+
 export function debrisCompletion(particles: DebrisParticle[]): number {
   let total = 0;
   let remaining = 0;
@@ -171,6 +220,29 @@ export function helperClean(
     cleaned++;
   }
   return { particles, next, cleaned, exhausted: scanned === particles.length && cleaned < maxParticles };
+}
+
+export function helperCleanInPlace(
+  particles: DebrisParticle[],
+  start: number,
+  maxParticles: number
+): { next: number; cleaned: number; dirty: number[] } {
+  if (particles.length === 0 || maxParticles <= 0) return { next: 0, cleaned: 0, dirty: [] };
+  let next = ((start % particles.length) + particles.length) % particles.length;
+  let scanned = 0;
+  let cleaned = 0;
+  const dirty: number[] = [];
+  while (scanned < particles.length && cleaned < maxParticles) {
+    const particle = particles[next];
+    next = (next + 1) % particles.length;
+    scanned++;
+    if (particle.removed) continue;
+    particle.amount = 0;
+    particle.removed = true;
+    dirty.push(particle.id);
+    cleaned++;
+  }
+  return { next, cleaned, dirty };
 }
 
 function mulberry32(seed: number): () => number {

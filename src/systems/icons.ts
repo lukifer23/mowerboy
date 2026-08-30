@@ -131,6 +131,33 @@ export const GLYPHS: Record<string, (ctx: CanvasRenderingContext2D, s: number) =
     ctx.closePath();
     ctx.fill();
   },
+  mower: (ctx, s) => {
+    ctx.fillRect(-s * .12, -s * .13, s * .24, s * .23);
+    ctx.fillStyle = "#ffd54f";
+    ctx.fillRect(-s * .18, s * .02, s * .36, s * .11);
+    ctx.fillStyle = "#263238";
+    for (const x of [-.15, .15]) for (const y of [-.1, .11]) {
+      ctx.beginPath(); ctx.arc(x * s, y * s, s * .045, 0, Math.PI * 2); ctx.fill();
+    }
+  },
+  vacuum: (ctx, s) => {
+    ctx.save(); ctx.rotate(-.18);
+    ctx.fillRect(-s * .1, -s * .16, s * .2, s * .25);
+    ctx.fillStyle = "#80deea";
+    ctx.fillRect(-s * .17, s * .06, s * .34, s * .1);
+    ctx.strokeStyle = "#f4f1de"; ctx.lineWidth = s * .035;
+    ctx.beginPath(); ctx.moveTo(0, -s * .14); ctx.lineTo(s * .09, -s * .25); ctx.stroke(); ctx.restore();
+  },
+  yard: (ctx, s) => {
+    ctx.fillStyle = "#81c784"; ctx.fillRect(-s * .17, -s * .14, s * .34, s * .28);
+    ctx.strokeStyle = "#f4f1de"; ctx.lineWidth = s * .025;
+    for (let x = -.12; x <= .12; x += .08) { ctx.beginPath(); ctx.moveTo(x*s,s*.12); ctx.lineTo((x+.04)*s,-s*.12); ctx.stroke(); }
+  },
+  room: (ctx, s) => {
+    ctx.fillStyle = "#80cbc4"; ctx.fillRect(-s * .17, -s * .14, s * .34, s * .28);
+    ctx.strokeStyle = "#f4f1de"; ctx.lineWidth = s * .035; ctx.strokeRect(-s*.17,-s*.14,s*.34,s*.28);
+    ctx.fillStyle = "#f4f1de"; ctx.fillRect(-s*.11,s*.01,s*.22,s*.08); ctx.fillRect(-s*.09,-s*.06,s*.18,s*.08);
+  },
   rain: (ctx, s) => {
     ctx.beginPath();
     ctx.arc(0, -s * 0.06, s * 0.12, Math.PI, 0);

@@ -3,7 +3,7 @@ import { DEFAULT_SAVE, migrateForTest } from "./Save";
 
 describe("save defaults", () => {
   it("starts with every machine open and magnet drive", () => {
-    expect(DEFAULT_SAVE.version).toBe(4);
+    expect(DEFAULT_SAVE.version).toBe(5);
     expect("unlockedMowers" in DEFAULT_SAVE).toBe(false);
     expect("unlockAll" in DEFAULT_SAVE).toBe(false);
     expect(DEFAULT_SAVE.control).toBe("magnet");
@@ -12,6 +12,7 @@ describe("save defaults", () => {
     expect(DEFAULT_SAVE.selectedVacuum).toBe("brightupright");
     expect(DEFAULT_SAVE.selectedRoom).toBe("living");
     expect(DEFAULT_SAVE.lastActivity).toBe("mow");
+    expect(DEFAULT_SAVE.selectedYard).toEqual({ kind: "authored", id: "home" });
   });
 });
 
@@ -30,7 +31,7 @@ describe("save migrate", () => {
     expect(d.volumes.engine).toBe(0);
     expect(d.selectedMower).toBe("storm");
     expect(d.control).toBe("tap");
-    expect(d.version).toBe(4);
+    expect(d.version).toBe(5);
     expect("unlockedMowers" in d).toBe(false);
     expect("unlockAll" in d).toBe(false);
     expect("sparkles" in d).toBe(false);
@@ -54,6 +55,15 @@ describe("save migrate", () => {
     expect(d.visitedRooms).toEqual(["living", "kitchen"]);
     expect(d.lastActivity).toBe("vacuum");
     expect(d.seenVacuumTutorial).toBe(true);
+  });
+
+  it("migrates an authored yard and validates a generated-yard seed", () => {
+    const authored = migrateForTest({ version: 4, visitedYards: ["farm", "home"] });
+    expect(authored.selectedYard).toEqual({ kind: "authored", id: "farm" });
+    const generated = migrateForTest({ version: 5, selectedYard: { kind: "wander", seed: 70000 } });
+    expect(generated.selectedYard).toEqual({ kind: "wander", seed: 70000 });
+    const repaired = migrateForTest({ version: 5, selectedYard: { kind: "authored", id: "missing" } });
+    expect(repaired.selectedYard).toEqual({ kind: "authored", id: "home" });
   });
 
   it("repairs invalid IDs, removes duplicates, and returns independent defaults", () => {

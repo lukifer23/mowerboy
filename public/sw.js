@@ -1,58 +1,55 @@
-const CACHE = "mowerboy-v6-20260828";
-const CORE = ["./", "./index.html", "./manifest.webmanifest", "./asset-manifest.json", "./assets/icon.png"];
+const PREFIX = "mowerboy-release-";
+const META = "mowerboy-meta";
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(warmCore().then(() => self.skipWaiting()));
-});
+self.addEventListener("install", (event) => event.waitUntil(stageRelease().then(() => self.skipWaiting())));
 
-async function warmCore() {
-  const cache = await caches.open(CACHE);
-  await cache.addAll(CORE);
-  // Vite fingerprints the production JavaScript and CSS. Discover those exact
-  // files from the built index so the first installed launch can reopen even
-  // when the host briefly disappears from Wi-Fi.
-  const response = await cache.match("./index.html");
-  if (!response || !response.ok) throw new Error(`MowerBoy shell ${response?.status ?? "missing"}`);
-  const html = await response.text();
-  const shell = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
-    .map((match) => new URL(match[1], self.location.href))
-    .filter((url) => url.origin === self.location.origin && (url.pathname.includes("/assets/") || /\.(?:js|css)$/.test(url.pathname)))
-    .map((url) => url.href);
-  const manifestResponse = await cache.match("./asset-manifest.json");
-  if (!manifestResponse || !manifestResponse.ok) throw new Error(`MowerBoy asset manifest ${manifestResponse?.status ?? "missing"}`);
-  const manifest = await manifestResponse.json();
-  const production = [manifest.core, manifest.mow, manifest.vacuum]
-    .flat()
-    .filter((url) => typeof url === "string")
-    .map((url) => new URL(url, self.registration.scope).href);
-  const pack = [...new Set([...shell, ...production])];
-  for (let index = 0; index < pack.length; index += 6) {
-    await cache.addAll(pack.slice(index, index + 6));
+async function stageRelease() {
+  const response = await fetch(new URL("release-manifest.json", self.registration.scope), { cache: "no-store" });
+  if (!response.ok) throw new Error(`release manifest ${response.status}`);
+  const manifest = await response.json();
+  const name = `${PREFIX}${manifest.release}`;
+  const cache = await caches.open(name);
+  const urls = [...new Set(["./", "./release-manifest.json", ...manifest.packs.core, ...manifest.packs.mow, ...manifest.packs.vacuum])];
+  try {
+    for (let index = 0; index < urls.length; index += 6) await cache.addAll(urls.slice(index, index + 6));
+  } catch (error) {
+    await caches.delete(name);
+    throw error;
   }
 }
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("mowerboy-") && key !== CACHE).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
-  );
-});
+self.addEventListener("activate", (event) => event.waitUntil(promoteRelease()));
+
+async function promoteRelease() {
+  const releases = (await caches.keys()).filter((key) => key.startsWith(PREFIX));
+  const current = releases.at(-1);
+  if (current) {
+    const meta = await caches.open(META);
+    let history = [];
+    try { history = await (await meta.match("./history.json"))?.json() ?? []; } catch { history = []; }
+    history = [current, ...history.filter((item) => item !== current && releases.includes(item))].slice(0, 2);
+    await meta.put("./history.json", new Response(JSON.stringify(history), { headers: { "content-type": "application/json" } }));
+    await Promise.all(releases.filter((key) => !history.includes(key)).map((key) => caches.delete(key)));
+  }
+  await self.clients.claim();
+}
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return;
-  event.respondWith(networkFirst(event.request));
+  if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
+  event.respondWith(cacheFirst(event.request));
 });
 
-async function networkFirst(request) {
-  const cache = await caches.open(CACHE);
+async function cacheFirst(request) {
+  const hit = await caches.match(request);
+  if (hit) return hit;
   try {
     const response = await fetch(request);
-    if (response && response.status === 200 && response.type === "basic") await cache.put(request, response.clone());
+    if (response.ok && response.type === "basic") {
+      const releases = (await caches.keys()).filter((key) => key.startsWith(PREFIX));
+      if (releases.length) await (await caches.open(releases.at(-1))).put(request, response.clone());
+    }
     return response;
   } catch {
-    return (await cache.match(request)) || (request.mode === "navigate" ? cache.match("./") : undefined) || Response.error();
+    return request.mode === "navigate" ? (await caches.match("./")) || Response.error() : Response.error();
   }
 }

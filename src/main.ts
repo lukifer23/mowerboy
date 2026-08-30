@@ -3,6 +3,7 @@ import type Phaser from "phaser";
 import { createGame } from "./game";
 import { audio } from "./systems/AudioEngine";
 import type { ActivityDiagnostics } from "./systems/Diagnostics";
+import { save } from "./systems/Save";
 
 const parent = document.getElementById("app");
 if (!parent) throw new Error("#app missing");
@@ -40,6 +41,17 @@ if (new URLSearchParams(window.location.search).get("test") === "1") {
       locationId,
       cameraZoom: scene?.cameras?.main.zoom ?? null,
       diagnostics,
+      boot: {
+        phase: active.some((item) => item.scene.key === "boot") ? "loading" : "ready",
+        milliseconds: performance.getEntriesByName("mowerboy-boot").at(-1)?.duration ?? null,
+        recovery: diagnostics?.machine.assetMode === "fallback" ? "fallback" : "none",
+      },
+      selectedPlace: save().selectedYard,
+      audio: audio.diagnostics(),
+      resources: {
+        dynamicTextures: game.textures.getTextureKeys().filter((key) => key.startsWith("grass-") || key.startsWith("room-floor-")).length,
+        activeCameras: active.reduce((count, item) => count + item.cameras.cameras.length, 0),
+      },
       render: {
         machineTexture: (machine && ((scene?.mower ?? scene?.vacuum) as { sprite?: { texture?: { key?: string } } }).sprite?.texture?.key) ?? null,
         propKinds: props.map((item) => item.getData?.("prop")?.kind).filter(Boolean),

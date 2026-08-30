@@ -4,10 +4,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 const durationSeconds = Number.parseInt(process.env.SOAK_SECONDS ?? "300", 10);
 const baseUrl = process.env.MOWERBOY_URL ?? "http://127.0.0.1:5173";
 const save = {
-  version: 4,
+  version: 5,
   selectedMower: "backyard",
   selectedVacuum: "brightupright",
   selectedRoom: "living",
+  selectedYard: { kind: "authored", id: "home" },
   completedYards: [], visitedYards: [], cleanedRooms: [], visitedRooms: [],
   lastActivity: "mow", control: "magnet",
   volumes: { master: 0, engine: 0, world: 0 }, muted: true,

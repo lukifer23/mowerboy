@@ -23,6 +23,13 @@ export interface ActivityDiagnostics {
     assetMode: "production" | "fallback";
   };
   input: InputDiagnostics;
+  lifecycle: {
+    cameras: number;
+    textures: number;
+    tweens: number;
+    inputListeners: number;
+    frameMs: { samples: number; p50: number; p95: number; worst: number };
+  };
 }
 
 export function worldBoundsToScreen(

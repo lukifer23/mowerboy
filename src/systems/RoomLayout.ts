@@ -20,6 +20,7 @@ export interface RoomLayout {
   props: Phaser.GameObjects.Image[];
   obstacles: RoomProp[];
   floorAt: (x: number, y: number) => FloorType;
+  destroy: () => void;
 }
 
 const COLORS: Record<FloorType, [string, string, string]> = {
@@ -38,7 +39,7 @@ export function buildRoom(scene: Phaser.Scene, room: RoomDef): RoomLayout {
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
   paintFloor(ctx, room);
   const key = `room-floor-${room.id}-${Math.random().toString(36).slice(2, 7)}`;
-  scene.textures.addCanvas(key, canvas);
+  const texture = scene.textures.addCanvas(key, canvas)!;
   const floor = scene.add.image(0, 0, key).setOrigin(0).setDepth(0);
   const obstacles = authoredFurniture(room);
   const props = obstacles.map((p) => {
@@ -56,6 +57,11 @@ export function buildRoom(scene: Phaser.Scene, room: RoomDef): RoomLayout {
     props,
     obstacles,
     floorAt: (x, y) => rug && x >= rug.x && x <= rug.x + rug.w && y >= rug.y && y <= rug.y + rug.h ? "rug" : room.floors.find((f) => f !== "rug") ?? "carpet",
+    destroy: () => {
+      floor.destroy();
+      for (const prop of props) prop.destroy();
+      texture.destroy();
+    },
   };
 }
 

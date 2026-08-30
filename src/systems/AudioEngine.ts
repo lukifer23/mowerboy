@@ -419,6 +419,13 @@ export class AudioEngine {
     this.raspGain.gain.setTargetAtTime(0, now, .03);
     this.chopGain.gain.setTargetAtTime(.0001, now, .03);
   }
+
+  diagnostics(): { state: string; persistentSources: number } {
+    const persistentSources = this.started
+      ? this.osc.length + [this.lfo, this.bladeOsc, this.bladeHarmonic, this.mechanicalOsc, this.chopOsc, this.keepAlive].filter(Boolean).length
+      : 0;
+    return { state: this.ctx?.state ?? "locked", persistentSources };
+  }
 }
 
 export const audio = new AudioEngine();

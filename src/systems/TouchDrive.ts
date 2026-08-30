@@ -185,6 +185,9 @@ export class TouchDrive {
   }
 
   private onDown(p: Phaser.Input.Pointer): void {
+    // Pad touches belong exclusively to the four directional controls. Never
+    // also claim them as world steering if camera/input ordering changes.
+    if (save().control === "pad") return;
     if (!this.isWorldPoint(p.x, p.y) || this.pointerDown) return;
     this.pointerDown = true;
     this.pointerId = p.id;

@@ -5,6 +5,7 @@ import { audio } from "../systems/AudioEngine";
 import { bigButton, labelText } from "../ui/BigButton";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { isFullscreen, toggleFullscreen } from "../systems/Fullscreen";
+import { registerAccessibleControl, setAccessibleLabel } from "../systems/Accessibility";
 
 export class SettingsScene extends Phaser.Scene {
   private layer?: Phaser.GameObjects.Container;
@@ -38,16 +39,17 @@ export class SettingsScene extends Phaser.Scene {
     const w = v.width;
     const s = save();
     this.scroll = resetScroll ? 0 : previousScroll;
-    labelText(this, w / 2, v.safe.top + 44, COPY.settings, v.compact ? 36 : 42);
-    bigButton(this, v.safe.left + 54, v.safe.top + 46, "icon-home", COPY.home, () => this.scene.start("title"), 80);
+    this.add.rectangle(w / 2, v.safe.top + 52, w, v.safe.top + 104, 0x16351c, .98).setDepth(40);
+    labelText(this, w / 2, v.safe.top + 38, COPY.settings, v.compact ? 32 : 40).setDepth(50);
+    bigButton(this, v.safe.left + 52, v.safe.top + 42, "icon-home", COPY.home, () => this.scene.start("title"), 76).setDepth(50);
     this.layer = this.add.container(0, 0);
 
     const contentW = Math.min(760, w - 28);
     const left = (w - contentW) / 2;
     const gap = 14;
     const colW = (contentW - gap) / 2;
-    let y = v.safe.top + 116;
-    this.sectionLabel(w / 2, y, "How to drive");
+    let y = v.safe.top + 132;
+    this.sectionLabel(w / 2, y, COPY.drive);
     y += 48;
     const schemes: { id: ControlScheme; label: string; icon: string }[] = [
       { id: "magnet", label: COPY.magnet, icon: "◎" },
@@ -68,11 +70,14 @@ export class SettingsScene extends Phaser.Scene {
         patchSave({ control: sc.id });
         this.redraw(false);
       });
+      registerAccessibleControl(this, r, `${sc.label}, ${on ? COPY.on : COPY.off}`, () => {
+        patchSave({ control: sc.id }); this.redraw(false);
+      });
       this.layer!.add([r, icon, label]);
     });
     y += 188;
 
-    this.sectionLabel(w / 2, y, "Sound");
+    this.sectionLabel(w / 2, y, COPY.sound);
     y += 46;
     this.slider(left, y, contentW, COPY.master, s.volumes.master, (value) => {
       s.volumes.master = value; persist(); audio.applyVolumes();
@@ -87,7 +92,7 @@ export class SettingsScene extends Phaser.Scene {
     });
     y += 92;
 
-    this.sectionLabel(w / 2, y, "Comfort and parent controls");
+    this.sectionLabel(w / 2, y, COPY.comfort);
     y += 50;
     const toggles = [
       { label: COPY.motion, on: s.reducedMotion, click: () => patchSave({ reducedMotion: !save().reducedMotion }) },
@@ -109,15 +114,24 @@ export class SettingsScene extends Phaser.Scene {
       const x = left + colW / 2 + col * (colW + gap);
       const ty = y + row * 82;
       const r = this.add.rectangle(x, ty, colW, 70, item.on ? 0x81c784 : 0x546e7a).setStrokeStyle(3, 0xf4f1de).setInteractive();
-      const check = this.add.text(x - colW * 0.35, ty, item.on ? "✓" : "○", { fontFamily: "system-ui", fontSize: "28px", color: "#102418", fontStyle: "bold" }).setOrigin(0.5);
-      const label = this.add.text(x + 10, ty, item.label, { fontFamily: "system-ui", fontSize: `${v.compact ? 16 : 19}px`, color: "#102418", fontStyle: "bold", align: "center", wordWrap: { width: colW * 0.7 } }).setOrigin(0.5);
+      const check = this.add.text(x - colW * 0.34, ty, item.on ? "✓" : "—", { fontFamily: "system-ui", fontSize: "28px", color: "#102418", fontStyle: "bold" }).setOrigin(0.5);
+      const label = this.add.text(x + 5, ty - 9, item.label, { fontFamily: "system-ui", fontSize: `${v.compact ? 15 : 18}px`, color: "#102418", fontStyle: "bold", align: "center", wordWrap: { width: colW * 0.66 } }).setOrigin(0.5);
+      const state = this.add.text(x + 5, ty + 17, item.on ? COPY.on : COPY.off, { fontFamily: "system-ui", fontSize: "14px", color: "#102418", fontStyle: "bold" }).setOrigin(.5);
       r.on("pointerup", () => { item.click(); this.redraw(false); });
-      this.layer!.add([r, check, label]);
+      registerAccessibleControl(this, r, `${item.label}, ${item.on ? COPY.on : COPY.off}`, () => { item.click(); this.redraw(false); });
+      this.layer!.add([r, check, label, state]);
     });
     y += Math.ceil(toggles.length / 2) * 82 + 20 + v.safe.bottom;
     this.minScroll = Math.min(0, v.height - y);
     this.scroll = Phaser.Math.Clamp(this.scroll, this.minScroll, 0);
     this.layer.y = this.scroll;
+    if (this.minScroll < 0 && this.scroll > this.minScroll + 8) {
+      const hint = this.add.text(w / 2, v.height - v.safe.bottom - 18, `⌄  ${COPY.moreBelow}`, {
+        fontFamily: "system-ui", fontSize: "15px", color: "#fff59d", fontStyle: "bold",
+        backgroundColor: "#16351c", padding: { x: 12, y: 5 },
+      }).setOrigin(.5, 1).setDepth(60);
+      hint.setAlpha(.94);
+    }
   }
 
   private sectionLabel(x: number, y: number, text: string): void {
@@ -141,6 +155,13 @@ export class SettingsScene extends Phaser.Scene {
     };
     bar.on("pointerdown", update);
     bar.on("pointermove", (p: Phaser.Input.Pointer) => { if (p.isDown) update(p); });
+    registerAccessibleControl(this, bar, `${labelTextValue}, ${Math.round(value * 100)} percent`, () => {
+      const next = value >= .95 ? 0 : Math.min(1, value + .1);
+      fill.width = trackW * next;
+      knob.x = trackX - trackW / 2 + trackW * next;
+      onChange(next);
+      setAccessibleLabel(bar, `${labelTextValue}, ${Math.round(next * 100)} percent`);
+    });
     this.layer!.add([label, bar, fill, knob]);
   }
 }
