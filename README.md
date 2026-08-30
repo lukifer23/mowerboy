@@ -102,5 +102,6 @@ Parent keys on a computer: **WASD** or arrows.
 | [`docs/INTEGRATION_PLAN.md`](docs/INTEGRATION_PLAN.md) | End-to-end architecture, gates, and remaining external acceptance |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Delivery phases, current status, goals, and acceptance gates |
 | [`docs/QA.md`](docs/QA.md) | Current browser/Fold evidence and the honest remaining acceptance gaps |
+| [`docs/HANDOFF.md`](docs/HANDOFF.md) | Exact current state and cross-machine resume steps |
 | [`docs/ASSET_PROVENANCE.md`](docs/ASSET_PROVENANCE.md) | Original-art generation contract, inventory, and validation |
 | [`CREDITS.md`](CREDITS.md) | Art, libraries, licenses |
