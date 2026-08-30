@@ -16,6 +16,12 @@ const dist = resolve(root, "dist");
 const stampPath = resolve(dist, ".mowerboy-build.json");
 const host = process.env.MOWERBOY_HOST || "0.0.0.0";
 const requestedPort = validPort(process.env.PORT || "5173");
+const existingUrl = process.env.PORT ? null : await findExistingGateway(requestedPort);
+if (existingUrl) {
+  console.log(`MowerBoy is already running: ${existingUrl}/host`);
+  if (process.env.MOWERBOY_NO_OPEN !== "1") openBrowser(`${existingUrl}/host`);
+  process.exit(0);
+}
 const port = process.env.PORT ? await requireAvailablePort(requestedPort, host) : await firstAvailablePort(requestedPort, host);
 const certPath = process.env.MOWERBOY_CERT;
 const keyPath = process.env.MOWERBOY_KEY;
@@ -65,7 +71,7 @@ async function prepare() {
 
 async function respond(req, res) {
   const url = new URL(req.url || "/", localUrl);
-  if (url.pathname === "/healthz") return json(res, phase === "error" ? 503 : 200, { phase, detail, release, localUrl, lanUrls });
+  if (url.pathname === "/healthz") return json(res, phase === "error" ? 503 : 200, { app: "mowerboy", phase, detail, release, localUrl, lanUrls });
   if (url.pathname === "/host") return html(res, dashboard());
   if (url.pathname === "/host/qr.svg") {
     const target = lanUrls[0] || localUrl;
@@ -108,6 +114,7 @@ function openBrowser(url){const spec=process.platform==="win32"?["cmd.exe",["/d"
 function json(res,status,value){res.writeHead(status,{"content-type":"application/json","cache-control":"no-store"});res.end(JSON.stringify(value));}
 function html(res,value){res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store"});res.end(value);}
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)stop("PORT must be a number from 1 to 65535.");return port;}
+async function findExistingGateway(start){const probes=[];for(let port=start;port<start+20&&port<=65535;port++)probes.push((async()=>{try{const response=await fetch(`http://127.0.0.1:${port}/healthz`,{signal:AbortSignal.timeout(350)});const state=await response.json();return state.app==="mowerboy"&&typeof state.localUrl==="string"?state.localUrl:null;}catch{return null;}})());return(await Promise.all(probes)).find(Boolean)||null;}
 async function requireAvailablePort(port,address){if(await portAvailable(port,address))return port;stop(`Port ${port} is already in use. Choose another PORT or close the other local server.`);}
 async function firstAvailablePort(start,address){for(let candidate=start;candidate<start+20&&candidate<=65535;candidate++){if(await portAvailable(candidate,address))return candidate;}stop(`Ports ${start}-${Math.min(start+19,65535)} are already in use. Close another local server and try again.`);}
 async function portAvailable(port,address){const loopbackFree=address!=="0.0.0.0"||await canListen(port,"127.0.0.1");return loopbackFree&&await canListen(port,address);}

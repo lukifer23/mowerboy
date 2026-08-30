@@ -14,7 +14,7 @@ Designed for simple, accessible one-finger play on an iPad, phone, or tablet, ho
 2. After that, double-click **MowerBoy** on the Desktop.
 3. A friendly host page opens by itself. Wait for **Ready to play**, then scan the large QR code with the iPad camera.
 
-The computer needs Node.js 20 or newer installed once by whoever sets up the game. After that, the shortcut installs locked game dependencies when needed, builds only when the game changed, starts the production gateway, and shows every usable same-Wi-Fi address. No terminal or folder navigation is required for everyday play; a friendly message appears if the one-time Node setup is missing. It prefers port 5173 and automatically uses the next open port if another local program already owns 5173.
+The computer needs Node.js 20 or newer installed once by whoever sets up the game. After that, the shortcut installs locked game dependencies when needed, builds only when the game changed, starts the production gateway, and shows every usable same-Wi-Fi address. No terminal or folder navigation is required for everyday play; a friendly message appears if the one-time Node setup is missing. It prefers port 5173, automatically uses the next open port if another local program already owns 5173, and reopens the existing dashboard instead of starting a duplicate when clicked twice.
 
 ## Terminal setup
 

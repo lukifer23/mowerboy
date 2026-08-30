@@ -14,7 +14,7 @@ This is the evidence ledger for the web/touch release pass. A green automated ch
 | Browser touch/content | 42 checks pass in installed Chrome; 48 intentional project skips keep heavyweight matrices single-run; includes two simultaneous cold clients |
 | Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 17.24 MiB; the complete 70-file release is 18.97 MiB |
 | Production offline | Fingerprinted JS/CSS plus all 59 assets cache from the generated release manifest; with networking disabled, Tractor Field/Field Giant and Community Hall/Floor Rider reopen with production art |
-| Windows shortcut | Installed `.lnk` metadata and custom icon validate; its exact hidden-launch target reached Ready, dashboard, QR, and game HTTP 200 while preserving a conflicting BidLens listener on 5173 and selecting LAN port 5174 |
+| Windows shortcut | Installed `.lnk` metadata and custom icon validate; its exact hidden-launch target reached Ready, dashboard, QR, and game HTTP 200 while preserving a conflicting BidLens listener on 5173 and selecting LAN port 5174; a repeat launch reused the same listener/process |
 | Dependency audit | 0 known vulnerabilities after Vite 8.2.2 / Vitest 4.1.11 upgrade |
 | Soak | 308.1 seconds of active page time, 35 Mow/Vacuum cycles, 70 activity starts, 0 console errors |
 
