@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
+import { createServer as createProbeServer } from "node:net";
 import { networkInterfaces } from "node:os";
 import { existsSync } from "node:fs";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
@@ -13,12 +14,13 @@ import { fileURLToPath } from "node:url";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const dist = resolve(root, "dist");
 const stampPath = resolve(dist, ".mowerboy-build.json");
-const port = validPort(process.env.PORT || "5173");
 const host = process.env.MOWERBOY_HOST || "0.0.0.0";
+const requestedPort = validPort(process.env.PORT || "5173");
+const port = process.env.PORT ? await requireAvailablePort(requestedPort, host) : await firstAvailablePort(requestedPort, host);
 const certPath = process.env.MOWERBOY_CERT;
 const keyPath = process.env.MOWERBOY_KEY;
 const addresses = Object.values(networkInterfaces()).flat().filter((item) => item && !item.internal && (item.family === 4 || item.family === "IPv4")).map((item) => item.address);
-let phase = "preparing", detail = "Checking MowerBoy…", release = "";
+let phase = "preparing", detail = port === requestedPort ? "Checking MowerBoy…" : `Port ${requestedPort} is busy. Using ${port} instead…`, release = "";
 
 if (Number(process.versions.node.split(".")[0]) < 20) stop(`Node 20 or newer is required. Found ${process.version}.`);
 if (!existsSync(resolve(root, "package-lock.json"))) stop("package-lock.json is missing. Restore the MowerBoy folder and try again.");
@@ -106,6 +108,10 @@ function openBrowser(url){const spec=process.platform==="win32"?["cmd.exe",["/d"
 function json(res,status,value){res.writeHead(status,{"content-type":"application/json","cache-control":"no-store"});res.end(JSON.stringify(value));}
 function html(res,value){res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store"});res.end(value);}
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)stop("PORT must be a number from 1 to 65535.");return port;}
+async function requireAvailablePort(port,address){if(await portAvailable(port,address))return port;stop(`Port ${port} is already in use. Choose another PORT or close the other local server.`);}
+async function firstAvailablePort(start,address){for(let candidate=start;candidate<start+20&&candidate<=65535;candidate++){if(await portAvailable(candidate,address))return candidate;}stop(`Ports ${start}-${Math.min(start+19,65535)} are already in use. Close another local server and try again.`);}
+async function portAvailable(port,address){const loopbackFree=address!=="0.0.0.0"||await canListen(port,"127.0.0.1");return loopbackFree&&await canListen(port,address);}
+function canListen(port,address){return new Promise((resolveAvailable)=>{const probe=createProbeServer();probe.unref();probe.once("error",()=>resolveAvailable(false));probe.listen(port,address,()=>probe.close(()=>resolveAvailable(true)));});}
 function mime(ext){return ({".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".json":"application/json; charset=utf-8",".webmanifest":"application/manifest+json",".png":"image/png",".jpg":"image/jpeg",".svg":"image/svg+xml",".map":"application/json"})[ext]||"application/octet-stream";}
 function escapeHtml(value){return value.replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);}
 function stop(message){console.error(`MowerBoy could not start: ${message}`);process.exit(1);}

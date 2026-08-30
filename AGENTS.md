@@ -20,7 +20,7 @@ MowerBoy is a touch-first machine game for simple tablet play, hosted from a Mac
 | Failure | **Never.** No timers, no damage, no game over, no lives, no score that goes down |
 | UI language | Pictures first, short labels under buttons (`src/data/copy.ts`) |
 | Look | Cute but recognizably real machines. Original names. **No trademarked brands** (no Deere logos, etc.) |
-| Host | Browser game. `npm start` binds `0.0.0.0:5173` and prints a LAN URL + QR |
+| Host | Browser game. `npm start` prefers `0.0.0.0:5173`, safely falls forward if the default is occupied, and opens LAN URL + QR hosting |
 | Hit targets | ~80px+ |
 
 Other control schemes still ship in Settings: `tap`, `cruise`, `pad`. Every machine and yard is open on first launch; never add progression gates.

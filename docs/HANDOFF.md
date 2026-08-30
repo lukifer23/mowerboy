@@ -29,7 +29,7 @@ The repository was intentionally rewritten to a sanitized root before this hando
 - production assets: 59 files, 17.24 MiB; complete generated release: 70 files, 18.97 MiB
 - stable chunks: Phaser 1,197 KiB and game 180 KiB before compression
 - production-offline replay: all 59 manifest assets plus exact Field Giant/Floor Rider art pass
-- Windows production gateway smoke: readiness, dashboard, QR SVG, game shell, and LAN binding pass
+- installed Windows shortcut target-chain smoke: custom icon/metadata, hidden launch, automatic 5173-conflict fallback, readiness, dashboard, QR SVG, game shell, and LAN binding pass without disturbing the other listener
 
 The automated release baseline is green, but physical Fold/iPad, assistive-technology, controlled-listening, human Windows shortcut/firewall, macOS host, parent, and child acceptance remain separate external gates. Do not write “perfect” or “release-ready” until those gates pass.
 
