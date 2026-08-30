@@ -6,19 +6,19 @@ Source product design: `/Users/admin/.gstack/projects/MowerBoy/admin-unknown-des
 
 This plan adds a complete Vacuum activity without removing or weakening mowing. It also closes the bounded outdoor fidelity program. A child never sees unfinished content.
 
-## Execution snapshot — 2026-08-28
+## Execution snapshot — 2026-08-30
 
-- Shared `DriveableMachine`, `TouchDrive`, `ActivityHud`, audio host, Save v4 continuity, and scene-shutdown cleanup are integrated without merging mow/vacuum simulation.
+- Shared `DriveableMachine`, `TouchDrive`, `ActivityHud`, audio host, Save v5 continuity, and composed activity lifecycle are integrated without merging mow/vacuum simulation.
 - The picture-first combined hub, four galleries, 14 mowers, 20 yards, 8 vacuums, 12 rooms, five floors, and nine debris types are child-facing with no locks.
 - All 96 vacuum/room startup pairings passed in the controlled browser; Pause, Finish, 88% celebration, and Safe Home passed; a real unfolded Galaxy Fold held-touch pass cleaned 3% of a room.
-- TypeScript/build, 83 Vitest tests, and 34 passing Playwright checks pass. The build validates 47 required images plus their core/mow/vacuum cache manifest; the versioned network-first worker warms the fingerprinted shell and production packs in bounded batches, and a network-disabled Mow/Vacuum replay passes. Activity-scoped runtime loading and dependency audit remain clean. Real unfolded Fold Mow/Vacuum passes, four-second frame pacing, both first-run tutorials, latest-yard/latest-room continuity, every touch control in both activities, bounded Fold tooling, a scoped-loader cold start, and a five-minute animated cleanup soak pass. Controlled listening, physical folded/orientation coverage, trusted HTTPS PWA setup, Windows host, 30-minute device soak, and parent acceptance remain open.
+- Three consecutive full verification runs pass TypeScript/build, 85 Vitest tests, 42 Playwright checks, canonical 59-asset validation, generated release-manifest creation, and network-disabled Mow/Vacuum replay. The staged cache validates before promotion and retains one previous release. Activity-scoped loading, two-client cold start, selected-yard/selected-room continuity, all controls, the accessibility bridge, production gateway health/QR smoke, real unfolded Fold play, measured frame pacing, and the five-minute animated soak pass. Controlled listening, physical folded/orientation and iPad assistive-technology coverage, trusted HTTPS PWA acceptance, macOS host validation, human Windows shortcut/firewall acceptance, 30-minute device soak, and parent acceptance remain open.
 
 ## What already exists
 
 - A working Phaser 3/Vite browser game with responsive dual-camera mowing, four control schemes, fullscreen, Safe Home, synthesized audio, PWA files, and LAN hosting.
 - Fourteen outdoor machines, twenty authored yards, seeded New Yard, Free Mow, and eight powerups.
 - Pure, tested grass, collision, save, viewport, control, layout, wander, vacuum-content, and debris math.
-- Save v4 fields for both activities, including selected-room continuity.
+- Save v5 fields for both activities, including discriminated authored/generated selected-yard continuity and selected-room continuity.
 - Eight vacuum definitions and twelve room definitions, including five floor types and nine debris types.
 - A complete no-fail product contract in `ACCESSIBILITY.md`, current status in `ROADMAP.md`, visual rules in `DESIGN.md`, and approved navigation in `ACTIVITY_FLOW.md`.
 
@@ -35,8 +35,8 @@ This plan adds a complete Vacuum activity without removing or weakening mowing. 
 1. **[P0] (10/10)** Preserve mowing through a strangler migration. A big-bang shared-scene rewrite would violate the regression constraint.
 2. **[P0] (10/10)** Keep the current `PlayScene` mowing simulation and `VacuumPlayScene` separate. Shared code owns lifecycle/contracts only, never grass/debris branches.
 3. **[P0] (10/10)** Add browser E2E as a separate Playwright layer; keep Vitest pure-function only.
-4. **[P1] (9/10)** Introduce activity manifests and lifecycle cleanup before indoor assets; current startup already carries about 11.3 MiB.
-5. **[P1] (9/10)** Replace the current cache-first service worker with validated build/pack manifests and trusted-local HTTPS for actual PWA installability.
+4. **[P1] (9/10)** Use the canonical activity catalog and composed lifecycle to own diagnostics and cleanup without merging the simulations.
+5. **[P1] (9/10)** Stage and validate generated build/pack manifests before cache promotion; keep trusted-local HTTPS explicitly configured and separately accepted for PWA installability.
 6. **[P1] (9/10)** Make every extraction independently reversible and require mowing parity before the next extraction.
 7. **[P1] (8/10)** Use data-driven machine/room production templates so content completeness is validated rather than manually inferred.
 8. **[P2] (8/10)** Preserve the existing Web Audio singleton but split activity buses/profiles and enforce cleanup/peak tests.
@@ -114,7 +114,7 @@ Deliverables:
 - [~] Capture Fold evidence through ADB/CDP: CSS viewport, DPR, device posture, screenshots, real movement/progress, frame metrics, heap, and console errors are recorded manually; a reusable capture script and physical folded pass remain.
 - [x] Capture current mowing and vacuum touch baselines before further behavior edits.
 
-Gate: TypeScript, 83 tests, build, 34-check Playwright flow, production-offline replay, and real unfolded Fold Mow/Vacuum/Home/fullscreen passes succeed. Physical folded evidence remains a release-confidence item, not a reason to falsify this gate.
+Gate: TypeScript, 85 tests, build, 42-check Playwright flow, production-offline replay, and real unfolded Fold Mow/Vacuum/Home/fullscreen passes succeed. Physical folded evidence remains a release-confidence item, not a reason to falsify this gate.
 
 ### Milestone 1 — shared shell parity
 
@@ -180,7 +180,7 @@ Gate: fresh/migrated/offline/cache-interrupted flows pass with no dead tile or p
 - Run every machine/floor/debris listening matrix.
 - [x] Run a five-minute alternating-activity performance/cleanup case at the measured Fold fullscreen viewport.
 - [ ] Run a 30-minute alternating-activity soak on the physical Fold.
-- Validate macOS and Windows LAN/HTTPS parent runbooks.
+- Validate the macOS launcher and human Windows desktop-shortcut/firewall flow; automated Windows gateway, readiness, dashboard, LAN URL, and QR smoke already pass.
 - Record parent acceptance; only then mark Vacuum visible in the release configuration.
 
 ## Failure modes

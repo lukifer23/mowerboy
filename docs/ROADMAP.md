@@ -1,6 +1,6 @@
 # MowerBoy delivery roadmap
 
-Updated: 2026-08-28
+Updated: 2026-08-30
 
 This is the single status tracker for the mowing fidelity program and Vacuum Mode. Product rules remain in [`ACCESSIBILITY.md`](ACCESSIBILITY.md), architecture remains in [`DEVELOPMENT.md`](DEVELOPMENT.md), the approved end-to-end execution sequence is in [`INTEGRATION_PLAN.md`](INTEGRATION_PLAN.md), visual rules are in [`DESIGN.md`](DESIGN.md), the combined navigation is in [`ACTIVITY_FLOW.md`](ACTIVITY_FLOW.md), and parent instructions remain in [`../README.md`](../README.md).
 
@@ -82,15 +82,15 @@ Status: **in progress**
 
 Status: **in progress**
 
-- [~] Pure tests for save migration, collision geometry, grass/debris fields, controls, content integrity, and deterministic layouts. Eighty-three tests pass, including rounded paths, grouped perimeter/internal fences, deterministic debris clustering, invalid-ID/de-duplication/default-isolation recovery, and authored/generated yard rectangularity, enclosure, alphabet, fresh-start, and start invariants; broader randomized reachability coverage remains.
-- [x] Browser flows for both first-run tutorials, galleries, Settings, Pause/Resume, Quiet, Finish, both activities, all four touch schemes, gesture scrolling/swiping, latest-yard/latest-room continuity, HUD touch exclusion, CanvasTexture/AudioContext warning regression, exact production art for all 22 machines, and every 20-yard/12-room startup. Thirty-four checks pass across five viewport families, with heavyweight matrices intentionally run once at Fold fullscreen.
-- [x] Automated asset validation covers all 47 required production files and runs inside `npm run build`; PNG signatures/dimensions plus genuine RGBA transparency and safe visible bounds are enforced for machine/environment cutouts.
-- [x] Production offline validation covers the fingerprinted shell and all 47 manifest assets, then disables networking and opens both activities with exact production machine art.
+- [~] Pure tests for save migration, collision geometry, grass/debris fields, controls, content integrity, and deterministic layouts. Eighty-five tests pass, including Save v5 selected-yard migration, rounded paths, grouped perimeter/internal fences, deterministic debris clustering, invalid-ID/de-duplication/default-isolation recovery, and authored/generated yard rectangularity, enclosure, alphabet, fresh-start, and start invariants; broader randomized reachability coverage remains.
+- [x] Browser flows for both first-run tutorials, galleries, Settings, Pause/Resume, Quiet, Finish, both activities, all four touch schemes, gesture scrolling/swiping, selected-yard/selected-room continuity, HUD touch exclusion, accessibility semantics, two simultaneous cold clients, CanvasTexture/AudioContext warning regression, exact production art for all 22 machines, and every 20-yard/12-room startup. Forty-two checks pass across five viewport families, with 48 intentional project skips keeping heavyweight matrices single-run.
+- [x] Automated asset validation covers all 59 canonical production files and runs inside `npm run build`; PNG signatures/dimensions plus genuine RGBA transparency and safe visible bounds are enforced for machine/environment cutouts.
+- [x] Production offline validation covers the fingerprinted shell and all 59 manifest assets, then disables networking and opens both activities with exact production machine art.
 - [~] Screenshot review at phone portrait, phone landscape, unfolded Fold, tablet, laptop, and desktop dimensions. Desktop and unfolded Fold landscape evidence pass; remaining view families continue.
 - [~] Galaxy Fold play passes folded/unfolded, browser/fullscreen, touch drag, orientation changes, and long play. Real unfolded Chrome and fullscreen passes now cover the hub, Mow, Vacuum, physical held touch, transformed surfaces, release-to-stop, Safe Home, and measured frame pacing. A software CLOSED override was rejected as invalid physical-fold evidence; an actual folded posture and both physical orientations remain.
 - [ ] Controlled listening pass for every mower/vacuum family and every interaction material.
 - [~] Performance pass for startup, memory, frame pacing, long-session texture cleanup, and activity switching. Fold vacuum play measured 116.8 FPS on the 120 Hz panel over four seconds, p95 8.4 ms, worst 16.7 ms, zero frames over 33 ms. The final five-minute 832×749 animated soak passed 308.1 seconds of active page time, 35 cycles / 70 activity starts, zero console errors, and 10.7–38.2 MiB bounded heap; a 30-minute physical-device soak remains.
-- [ ] Parent runbook validated on both macOS and Windows LAN hosting.
+- [~] Production Node gateway, readiness endpoint, LAN URLs, browser QR dashboard, hidden Windows launcher, desktop-shortcut installer, and macOS launcher are implemented. Automated Windows hosting smoke passes; human Windows firewall/double-click acceptance and macOS validation remain.
 
 ## Current verified baseline
 
@@ -100,7 +100,7 @@ Status: **in progress**
 - Four control schemes and responsive dual-camera HUD.
 - Fullscreen and Safe Home verified on a Galaxy Z Fold 7.
 - Vite 8.2.2, Vitest 4.1.11, and Playwright 1.62.1 are current; `npm audit` reports zero known dependency vulnerabilities.
-- `npx tsc --noEmit`, 83 Vitest tests, 34 passing Playwright checks, 47-file/pack-manifest validation, production build, and production-offline Mow/Vacuum replay pass as of 2026-08-28.
+- Three consecutive `npm run verify` runs passed on 2026-08-30: TypeScript/build, 85 Vitest tests, 42 passing Playwright checks with 48 intentional skips, 59-file canonical asset validation, generated release manifest, and production-offline Mow/Vacuum replay.
 - The combined hub, fullscreen, Safe Home, real Fold mowing/vacuuming, and five-minute alternating-activity soak have current evidence in [`QA.md`](QA.md).
 
 ## Definition of phase completion

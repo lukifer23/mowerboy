@@ -1,6 +1,6 @@
 # Asset provenance and production contract
 
-Updated: 2026-08-28
+Updated: 2026-08-30
 
 MowerBoy uses original, unbranded machine and environment art created specifically for this private game. No manufacturer logo, copied game asset, stock pack, or trademarked machine identity is part of the production inventory.
 
@@ -18,7 +18,7 @@ Asset-specific subjects covered all fourteen mower families, all eight vacuum fa
 
 - `public/assets/mowers/`: fourteen transparent top-down mower/tractor cutouts
 - `public/assets/vacuums/`: eight transparent top-down vacuum/sweeper cutouts
-- `public/assets/portraits/`: ten isolated mower gallery portraits; the remaining four galleries use their production world illustration
+- `public/assets/portraits/`: fourteen isolated mower portraits and eight isolated vacuum portraits, normalized for the machine-book galleries
 - `public/assets/environment/barn-red-v3.png`: transparent barn cutout
 - root `*-v2.png` files: grass and outdoor environment illustrations
 - `title.jpg` and `icon.png`: home art and browser/PWA icon
@@ -27,11 +27,11 @@ The three retained JPEG source/reference files (`icon-src.jpg`, `icons/home.jpg`
 
 ## Validation
 
-`npm run check:assets` is part of every production build. It requires all 47 runtime production files, rejects missing/tiny/corrupt images, requires machine/environment cutouts to be non-interlaced 8-bit RGBA PNGs, verifies genuine visible and transparent pixels, and rejects artwork touching the image boundary. It also requires `public/asset-manifest.json` to list every production file exactly once in the core, mowing, or vacuum cache pack.
+`src/data/asset-manifest.json` is the canonical runtime inventory. The build generates the public copy and release manifest from it, so runtime loading, validation, offline packs, and browser tests cannot silently drift. `npm run check:assets` is part of every production build. It requires all 59 runtime production files, rejects missing/tiny/corrupt images, requires machine/environment cutouts to be non-interlaced 8-bit RGBA PNGs, verifies genuine visible and transparent pixels, and rejects artwork touching the image boundary. Every production file must appear exactly once in the core, mowing, or vacuum pack.
 
 Browser contracts then prove that every one of the 14 mower and 8 vacuum IDs resolves to its exact production world texture. The contact-sheet review artifacts are:
 
 - `.gstack/qa-reports/screenshots/2026-08-28-machine-contact-sheet.png`
 - `.gstack/qa-reports/screenshots/2026-08-28-environment-contact-sheet.png`
 
-Canvas vector renderers remain complete recovery paths when an image cannot load. They are functional original renderers, not blank placeholders, and production tests require the raster texture whenever the validated asset exists. `npm run test:offline` additionally builds the production app, waits until the service worker has cached the fingerprinted shell and all 47 manifest assets, disables networking, and opens real mowing and vacuum scenes with their exact production machine art.
+Canvas vector renderers remain complete recovery paths when an image cannot load. They are functional original renderers, not blank placeholders, and production tests require the raster texture whenever the validated asset exists. `npm run test:offline` additionally builds the production app, waits until the service worker has cached the fingerprinted shell and all 59 manifest assets, disables networking, and opens real mowing and vacuum scenes with their exact production machine art.

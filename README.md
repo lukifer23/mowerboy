@@ -8,19 +8,27 @@ Designed for simple, accessible one-finger play on an iPad, phone, or tablet, ho
 
 ---
 
-## Play in 3 steps
+## Easiest Windows setup
+
+1. Double-click **Install MowerBoy Shortcut.cmd** once.
+2. After that, double-click **MowerBoy** on the Desktop.
+3. A friendly host page opens by itself. Wait for **Ready to play**, then scan the large QR code with the iPad camera.
+
+The computer needs Node.js 20 or newer installed once by whoever sets up the game. After that, the shortcut installs locked game dependencies when needed, builds only when the game changed, starts the production gateway, and shows every usable same-Wi-Fi address. No terminal or folder navigation is required for everyday play; a friendly message appears if the one-time Node setup is missing.
+
+## Terminal setup
 
 On the **Mac or Windows** computer:
 
-1. Install [Node.js](https://nodejs.org) (LTS) if you don’t have it.
+1. Install [Node.js](https://nodejs.org) 20 or newer if you don’t have it.
 2. Open a terminal in this folder and run:
 
 ```bash
-npm install
+npm ci
 npm start
 ```
 
-3. A URL and a QR code appear. On the **iPad / phone / tablet** (same Wi-Fi):
+3. The browser host page opens with a large QR code and LAN URLs. On the **iPad / phone / tablet** (same Wi-Fi):
    - Open Safari or Chrome
    - Type the `http://192.168.…:5173` address, or scan the QR
    - Tap the screen once if the engine is quiet (iPads stay silent until a tap)
@@ -79,15 +87,15 @@ Parent keys on a computer: **WASD** or arrows.
 
 | Command | What it does |
 |---|---|
-| `npm start` | LAN server + QR — the one you want |
+| `npm start` | Production gateway, browser host dashboard, LAN URLs, QR, health check, and stale-build detection |
 | `npm test` | Unit tests |
-| `npm run test:e2e` | 34 passing Chrome checks: first-run tutorials, touch/resize, all four controls in both activities, gallery/settings gestures, continuity, production art, and all yard/room startups |
+| `npm run test:e2e` | 42 passing Chrome checks: tutorials, touch/resize, controls, accessibility mirrors, concurrent cold starts, galleries, continuity, production art, and every yard/room startup |
 | `npm run test:offline` | Builds/serves production, disables networking, and proves both activities reopen with their real cached machine art |
 | `npm run test:soak` | Five-minute alternating Mow/Vacuum cleanup and heap check |
 | `npm run test:fold -- --url=… --drag=x1,y1,x2,y2` | Attach to an existing Fold Chrome tab for a physical-device touch/screenshot check; never opens a browser |
 | `npm run build` | Production build |
 | `npm run serve` | Build, then LAN preview |
-| `npm run verify` | Assets/pack manifest, service-worker syntax, typecheck, production build, 83 unit tests, browser touch tests, and production-offline replay |
+| `npm run verify` | Catalog/release manifests, service-worker syntax, typecheck, production build, 85 unit tests, 42 browser checks, and production-offline replay |
 
 ## Docs
 

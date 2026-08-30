@@ -9,7 +9,7 @@ Companion to [`AGENTS.md`](../AGENTS.md). This file is the architecture and “h
 | Engine | Phaser 3.x (`package-lock.json` currently resolves 3.90.0) |
 | Language | TypeScript, `strict`, `noEmit` via `tsc` |
 | Bundler | Vite 8.2, `base: "./"`, host `0.0.0.0`, port **5173** `strictPort` |
-| LAN | `scripts/lan.mjs` — lists IPv4, QR via `qrcode-terminal@0.12.0`, spawns Vite |
+| LAN | `scripts/gateway.mjs` — production server, stale-build detection, health/readiness, IPv4 URLs, terminal/browser QR, optional HTTPS, clean shutdown |
 | Audio | Web Audio API, runtime graph (no mp3/ogg required) |
 | Save | `localStorage["mowerboy-save-v1"]` |
 | PWA | `public/manifest.webmanifest`, `public/sw.js` registered from `src/main.ts` |
@@ -36,7 +36,7 @@ boot → title
 
 `AssetCatalog.ts` owns activity-scoped loading. `PlayScene` queues mowing terrain/prop art plus the selected mower, `VacuumPlayScene` queues the selected vacuum, and each garage queues its own gallery. This keeps Vacuum art out of mowing startup and avoids the former all-assets-at-boot transfer.
 
-Load errors are ignored. Missing portraits fall back to `mower-card-<id>`.
+Every activity and gallery shows a visible loading overlay. Failed raster loads are recorded and select the complete procedural machine renderer rather than leaving a blank canvas; the recovery state is exposed only through parent/test diagnostics.
 
 ## PlayScene (the important one)
 
@@ -174,8 +174,9 @@ A near-silent keep-alive oscillator stays connected so Safari does not tear down
 
 ```ts
 {
-  version: 4,
+  version: 5,
   selectedMower: "backyard",
+  selectedYard: { kind: "authored", id: "home" },
   selectedVacuum: "brightupright",
   selectedRoom: "living",
   completedYards: string[],
@@ -189,7 +190,7 @@ A near-silent keep-alive oscillator stays connected so Safari does not tear down
 }
 ```
 
-`migrate()` fills holes, clamps volumes, rejects unknown machine/place IDs, de-duplicates history, and preserves useful older preferences while discarding legacy lock and sparkle-counter fields. Fresh/blocked-storage defaults are deep-independent, so progress or volume mutation cannot alter future defaults. Tests cover mowing and vacuum continuity via `migrateForTest`.
+`migrate()` fills holes, clamps volumes, rejects unknown machine/place IDs, de-duplicates history, and preserves useful older preferences while discarding legacy lock and sparkle-counter fields. `selectedYard` is discriminated so an authored ID or deterministic New Yard seed resumes exactly. Fresh/blocked-storage defaults are deep-independent, so progress or volume mutation cannot alter future defaults. Tests cover mowing and vacuum continuity via `migrateForTest`.
 
 ## Vacuum Mode
 
@@ -230,7 +231,7 @@ HUD icons, grass state, animation, and audio are generated in code. Production m
 
 1. `MowerDef` in `src/data/mowers.ts`
 2. Silhouette in `drawMower.ts` if `kind` is new or the machine needs a unique bit (bagger, lights, brush hog)
-3. Optional `public/assets/portraits/<id>.jpg` — same 3/4 isolated style as `backyard.jpg`
+3. `public/assets/portraits/<id>.jpg` — same 3/4 isolated style as `backyard.jpg`; production galleries require a portrait while runtime art retains its procedural recovery path
 4. If the count is no longer 14, update `src/data/mowers.test.ts`
 
 ## Add a yard
@@ -248,7 +249,7 @@ npm test
 | File | Asserts |
 |---|---|
 | `src/systems/grassMath.test.ts` | stripe bins, deck cut, void skip, seeded grow |
-| `src/systems/Save.test.ts` | defaults, volume clamp, legacy to version-4 mowing/vacuum migration |
+| `src/systems/Save.test.ts` | defaults, volume clamp, legacy to version-5 mowing/vacuum migration and authored/generated yard continuity |
 | `src/systems/debrisMath.test.ts` | deterministic debris, intake cleaning, material completion, helper |
 | `src/systems/worldGeometry.test.ts` | circle, ellipse, rectangle, and rotated-rectangle collision |
 | `src/systems/Layout.test.ts` | all authored layouts, solid footprint masks, pickup safety, prop shapes |
@@ -266,7 +267,7 @@ npm run test:e2e
 npm run test:soak
 ```
 
-The browser suite has 34 passing checks at 390×844, 844×390, 832×608, 832×749, and 1024×768. `fold-touch.spec.ts` verifies full-canvas coverage, no scroll, held-touch movement, real grass/debris progress, release-to-stop, Safe Home, and live scene-preserving resize. `content-contracts.spec.ts` runs its full matrix once at Fold fullscreen: every gallery/Settings screen, exact production art for all 22 machines, all 20 yard and 12 room startups, Pause/Resume, Quiet, and Finish. `continuity.spec.ts` covers both first-run tutorial buttons, all four touch schemes in both activities, gallery swipes, long-screen scrolling, Settings toggle persistence, no accidental selection after a drag, latest-yard and selected-room continuity, HUD touch exclusion, and Canvas/AudioContext warning regressions.
+The browser suite has 42 passing checks and 48 intentional matrix skips at 390×844, 844×390, 832×608, 832×749, and 1024×768. Normal concurrency is capped at two; heavyweight inventory matrices run serially, and a dedicated contract cold-starts two independent clients together. `fold-touch.spec.ts` verifies full-canvas coverage, no scroll, held-touch movement, real grass/debris progress, release-to-stop, Safe Home, and live scene-preserving resize. `content-contracts.spec.ts` runs its full matrix once at Fold fullscreen: every gallery/Settings screen, exact production art for all 22 machines, all 20 yard and 12 room startups, Pause/Resume, Quiet, Finish, the DOM accessibility mirror, and the two-client cold start. `continuity.spec.ts` covers both first-run tutorial buttons, all four touch schemes in both activities, gallery swipes, long-screen scrolling, Settings toggle persistence, no accidental selection after a drag, exact selected-yard and selected-room continuity, HUD touch exclusion, and Canvas/AudioContext warning regressions.
 
 `src/data/levels.test.ts` enforces rectangular rows, closed fences, the supported map alphabet, and exactly one start for all authored yards plus 32 deterministic New Yard seeds. `visitYard` and `visitRoom` keep most-recent-first histories so Free Mow and the vacuum garage continue the place the child just chose.
 
@@ -292,7 +293,13 @@ A title screenshot is not enough.
 
 ## PWA and local security
 
-`public/asset-manifest.json` divides the 47 validated production assets into core, mow, and vacuum packs. The service worker warms those packs in bounded batches plus the exact fingerprinted JS/CSS shell. `npm run test:offline` serves the production build, waits for worker control/cache completion, disables networking, and opens real Mow and Vacuum scenes with production art. `localhost` is a secure-context exception; a plain `http://192.168.…` LAN address is not. Fullscreen is the supported chrome-free path on plain LAN HTTP. Do not promise Android PWA installation until a trusted-local HTTPS setup has been validated on the parent machine and device.
+`src/data/asset-manifest.json` is the canonical catalog for all 59 production assets and their core, mow, and vacuum packs; the build synchronizes its public copy. `scripts/release-manifest.mjs` fingerprints every built file with SHA-256 and byte size. The service worker stages and validates the exact new release before promotion, retains one prior release for rollback, and discards incomplete/quota-failed stages. `npm run test:offline` waits for worker control/cache completion, disables networking, and opens real Mow and Vacuum scenes with production art. `localhost` is a secure-context exception; a plain `http://192.168.…` LAN address is not. Fullscreen is the supported chrome-free path on plain LAN HTTP. Do not promise Android PWA installation until optional trusted certificates have been validated on the parent machine and device.
+
+## Production family gateway
+
+`npm start` launches `scripts/gateway.mjs`, not the Vite development server. It validates Node and the lockfile, installs locked dependencies only when required, rebuilds only when the source release hash is stale, binds `0.0.0.0:5173`, serves `/healthz`, and opens `/host`. The host page stays readable while setup runs, then shows the computer URL, usable LAN URLs, and a scannable QR code. `PORT`, `MOWERBOY_HOST`, `MOWERBOY_CERT`, and `MOWERBOY_KEY` configure it; certificate and key must be supplied together.
+
+On Windows, `Install MowerBoy Shortcut.cmd` creates a desktop shortcut whose hidden VBScript launcher starts the gateway without leaving a terminal open. `MowerBoy.cmd` is the visible diagnostic fallback. `MowerBoy.command` is the macOS launcher. All launch paths converge on the same gateway rather than duplicating hosting behavior.
 
 ## Out of scope unless the parent asks
 

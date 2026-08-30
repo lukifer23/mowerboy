@@ -6,7 +6,7 @@ Remote: `https://github.com/lukifer23/mowerboy.git`
 
 ## Current state
 
-The first perfection-pass slice is implemented:
+The engineering, hosting, continuity, accessibility, and first visual-feedback slices of the perfection pass are implemented:
 
 - interrupted touch/pad input clears safely in Mow and Vacuum
 - camera zoom is stable and speed-independent
@@ -14,21 +14,24 @@ The first perfection-pass slice is implemented:
 - real activity diagnostics expose HUD, camera, machine bounds, production-art mode, and input ownership on `?test=1`
 - browser tests use real diagnostic bounds instead of duplicated HUD coordinates
 - public docs contain no personal family information
+- Save v5 resumes the exact authored yard or generated-yard seed and selected room
+- a production gateway serves the built game, health status, LAN URLs, and a scannable QR dashboard; Windows has a hidden launcher and desktop-shortcut installer
+- all 22 machine portraits now use production art, and one canonical asset catalog drives validation, runtime selection, offline packs, and release manifests
 
 The repository was intentionally rewritten to a sanitized root before this handoff. Do not restore old local commit objects or publish old archives.
 
 ## Last verified evidence
 
 - `npx tsc --noEmit`: pass
-- `npm test -- --run`: 84/84 pass
-- `npm run build`: pass
-- production assets: 47 files, 15.58 MiB
-- main bundle: 368.37 KiB gzip
-- focused Fold browser suite: 15/16 passed initially; the only failure was corrected test setup that reset `localStorage`
-- corrected Mow/Vacuum pointer and pad cancellation test: pass
-- visual inspection: Mow 390×844, Vacuum 832×749, Mow 960×325; no inspected console errors
+- three consecutive `npm run verify` runs: pass
+- `npm test -- --run`: 85/85 pass
+- browser: 42 pass, 48 intentional matrix skips
+- production assets: 59 files, 17.24 MiB; complete generated release: 70 files, 18.97 MiB
+- stable chunks: Phaser 1,197 KiB and game 180 KiB before compression
+- production-offline replay: all 59 manifest assets plus exact Field Giant/Floor Rider art pass
+- Windows production gateway smoke: readiness, dashboard, QR SVG, game shell, and LAN binding pass
 
-Run the full verification matrix again before making release claims. Physical Fold/iPad, Windows, listening, parent, and child acceptance remain separate external gates.
+The automated release baseline is green, but physical Fold/iPad, assistive-technology, controlled-listening, human Windows shortcut/firewall, macOS host, parent, and child acceptance remain separate external gates. Do not write “perfect” or “release-ready” until those gates pass.
 
 ## Resume
 
@@ -42,12 +45,12 @@ npm run build
 
 Then continue in this order:
 
-1. Complete gallery art as one wired slice: four missing mower portraits and eight vacuum portraits, presentation metadata, catalog-derived asset requirements, manifest validation, contact sheets, gallery E2E, build, commit, push.
-2. Generate real-scene previews for all 20 yards and 12 rooms.
-3. Strengthen deck/intake-to-surface transformation feedback in both golden loops.
-4. Add shared activity-chrome lifecycle ownership without merging the two simulations.
-5. Add Mac and Windows one-click launchers, parent diagnostics, hashed release manifest, and atomic current/previous offline cache promotion.
-6. Run full unit, build, browser, offline, soak, performance, visual, device, and listening gates; update QA and roadmap evidence honestly.
+1. Generate real-scene previews for all 20 yards and 12 rooms from the production renderers.
+2. Complete the responsive screenshot review and final visual tuning across the specified matrix.
+3. Run the 30-minute physical alternating-activity soak and controlled listening matrix.
+4. Validate the one-click family flow on a clean Windows host and macOS host, including firewall/port diagnostics and real QR connection.
+5. Run VoiceOver on iPad and TalkBack plus folded/orientation checks on the physical Fold.
+6. Record parent/child acceptance, then update release language only from that evidence.
 
 Do not begin the four-place expansion until the current inventory and staged usage pilot pass. Do not invent expansion themes without evidence.
 

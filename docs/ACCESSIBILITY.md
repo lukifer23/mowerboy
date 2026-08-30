@@ -21,7 +21,7 @@ Also in Settings:
 - **Always go** — cruise control; finger only steers (engine never dies)
 - **Big arrows** — huge on-screen pad
 
-All tap targets are ~80px+.
+All primary tap targets are ~80px+. Phaser controls are mirrored into a transparent DOM accessibility layer with semantic names, keyboard activation, visible focus, and live progress announcements while retaining the canvas touch behavior.
 
 The game relayouts without restarting when browser chrome appears/disappears, the device rotates, or a Fold viewport changes size. A held pointer is released on pointer cancel, game-out, window blur, or a hidden-tab transition so a machine cannot stay driving after the child leaves the page. Vacuum suction also stops when the child lifts their finger; an idle machine never cleans invisibly.
 
@@ -30,7 +30,7 @@ The game relayouts without restarting when browser chrome appears/disappears, th
 - Engine pitch follows throttle (the point of the toy)
 - Separate sliders: all sound, engine, world
 - Mute is always on screen
-- **Calm motion** reduces particles and celebration bits; engine stays unless muted
+- **Calm motion** reduces particles, map/pond/ambient motion, grooming trails, tutorial movement, and celebration effects; engine stays unless muted
 - **Strong colors** boosts cut vs tall grass
 - Celebration is warm, not strobing
 
@@ -38,7 +38,9 @@ iOS will not play audio until the first tap. The title screen and first pointer 
 
 ## Reading
 
-Pictures first. Short labels under buttons. Tutorial is three sentences with a giant Play button.
+Pictures first. Short labels under buttons. Tutorials show one instruction at a time with a large finger-to-machine demonstration and a giant Play button.
+
+The automated semantic, keyboard, focus, target-size, and reduced-motion contracts are regression protection, not a claim of complete WCAG conformance. VoiceOver on the physical iPad, TalkBack on the physical Fold, 200% zoom review, and human contrast review remain release gates.
 
 ## Open play and progress
 

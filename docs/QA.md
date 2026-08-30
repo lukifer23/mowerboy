@@ -1,6 +1,6 @@
 # Browser, Fold, and touch verification
 
-Updated: 2026-08-28
+Updated: 2026-08-30
 
 This is the evidence ledger for the web/touch release pass. A green automated check is not treated as physical-device, listening, Windows-host, or parent acceptance.
 
@@ -9,10 +9,11 @@ This is the evidence ledger for the web/touch release pass. A green automated ch
 | Gate | Result |
 |---|---|
 | TypeScript | `npx tsc --noEmit` passes |
-| Unit/content | 83 Vitest tests pass in 10 files |
-| Browser touch/content | 34 checks pass in installed Chrome; 36 intentional project skips keep heavyweight matrices single-run |
-| Production build | Vite 8.2.2 build passes; 47 production assets and their cache-pack manifest validate at 15.58 MiB on disk |
-| Production offline | Fingerprinted JS/CSS plus all 47 assets cache; with networking disabled, Tractor Field/Field Giant and Community Hall/Floor Rider reopen with production art |
+| Deterministic verification | Three consecutive clean `npm run verify` runs on 2026-08-30 |
+| Unit/content | 85 Vitest tests pass in 10 files |
+| Browser touch/content | 42 checks pass in installed Chrome; 48 intentional project skips keep heavyweight matrices single-run; includes two simultaneous cold clients |
+| Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 17.24 MiB; the complete 70-file release is 18.97 MiB |
+| Production offline | Fingerprinted JS/CSS plus all 59 assets cache from the generated release manifest; with networking disabled, Tractor Field/Field Giant and Community Hall/Floor Rider reopen with production art |
 | Dependency audit | 0 known vulnerabilities after Vite 8.2.2 / Vitest 4.1.11 upgrade |
 | Soak | 308.1 seconds of active page time, 35 Mow/Vacuum cycles, 70 activity starts, 0 console errors |
 
@@ -24,7 +25,7 @@ Playwright viewports:
 - 832×749 Galaxy Z Fold 7 inner screen in browser fullscreen
 - 1024×768 tablet
 
-Every viewport proves that the canvas exactly matches the visual viewport with no document scroll. Both activities receive a held touch, move the real machine, increase or preserve real transformation progress, set throttle to zero on release, and decelerate. Safe Home ignores one accidental tap and exits on the second. A live portrait/landscape-style resize preserves the active Vacuum scene and progress; idle suction is disabled so resize or waiting cannot clean invisibly. The Fold-fullscreen contracts additionally dismiss both three-step first-run tutorials through the visible Play button, start every gallery and Settings, validate all 14 mower and 8 vacuum production textures, all 20 fresh-start yards and 12 rooms, exercise Pause/Resume, Quiet, and Finish, drive Magnet/Tap/Cruise/Pad in both activities, swipe both machine galleries without accidental selection, preserve Settings scroll while toggling both tutorial families and Safe Home, continue the latest yard/room, exclude objective-HUD taps from steering, and reject CanvasTexture/AudioContext warning regressions.
+Every viewport proves that the canvas exactly matches the visual viewport with no document scroll. Both activities receive a held touch, move the real machine, increase or preserve real transformation progress, set throttle to zero on release, and decelerate. Safe Home ignores one accidental tap and exits on the second. A live portrait/landscape-style resize preserves the active Vacuum scene and progress; idle suction is disabled so resize or waiting cannot clean invisibly. The Fold-fullscreen contracts additionally dismiss both three-step first-run tutorials through the visible Play button, start every gallery and Settings, validate all 14 mower and 8 vacuum production textures, all 20 fresh-start yards and 12 rooms, exercise Pause/Resume, Quiet, and Finish, drive Magnet/Tap/Cruise/Pad in both activities, swipe both machine galleries without accidental selection, preserve Settings scroll while toggling both tutorial families and Safe Home, continue the exact selected authored/generated yard and selected room, exclude objective-HUD taps from steering, exercise the DOM accessibility bridge, and reject CanvasTexture/AudioContext warning regressions.
 
 ## Real Galaxy Z Fold 7 evidence
 
@@ -65,7 +66,9 @@ The final animated run lasted 308.1 seconds of active page time. Heap sampled be
 - Controlled listening across every mower/vacuum family and interaction material
 - Thirty-minute alternating-activity soak on the physical Fold
 - Trusted-local HTTPS setup if Android installable-PWA behavior is required; plain LAN HTTP fullscreen is already verified
-- Windows LAN/firewall runbook validation
+- Human double-click/firewall acceptance of the Windows desktop shortcut; the production gateway, health endpoint, dashboard, LAN URL, and QR endpoint pass automated Windows smoke testing
+- macOS launcher/host validation
+- VoiceOver on iPad and TalkBack on the physical Fold
 - Parent and child acceptance
 
 The production-offline behavior itself is verified on localhost; trusted-local HTTPS is still required to expose Android installation from a LAN address. No placeholder, mock, stub, disabled card, lock, or fail state was introduced by this pass. The `?test=1` diagnostic bridge is read-only and reports the actual Phaser simulation.
