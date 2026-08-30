@@ -1,0 +1,11 @@
+node_modules
+dist
+.DS_Store
+*.local
+.vite
+coverage
+.smoke
+.gstack/
+.playwright-cli/
+test-results/
+playwright-report/

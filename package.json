@@ -1,0 +1,33 @@
+{
+  "name": "mowerboy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A gentle, touch-first mowing and vacuuming game. One finger. No fail.",
+  "scripts": {
+    "start": "node scripts/lan.mjs",
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "check:assets": "node scripts/check-assets.mjs",
+    "check:sw": "node --check public/sw.js",
+    "build": "npm run check:assets && npm run check:sw && tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173",
+    "serve": "npm run build && npm run preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:offline": "node scripts/offline-check.mjs",
+    "test:soak": "node scripts/soak.mjs",
+    "test:fold": "node scripts/fold-check.mjs",
+    "verify": "npm run build && npm test && npm run test:e2e && npm run test:offline"
+  },
+  "dependencies": {
+    "phaser": "^3.87.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "qrcode-terminal": "^0.12.0",
+    "typescript": "^5.6.3",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  }
+}

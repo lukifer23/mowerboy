@@ -1,0 +1,18 @@
+{
+  "name": "MowerBoy",
+  "short_name": "MowerBoy",
+  "description": "A gentle mowing and vacuuming game. One finger. No fail.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#143018",
+  "theme_color": "#16351c",
+  "icons": [
+    {
+      "src": "./assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
