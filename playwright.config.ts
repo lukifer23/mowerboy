@@ -14,11 +14,10 @@ const baseURL = externalBaseUrl ?? `http://127.0.0.1:${e2ePort}`;
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
-  // Phaser boot performs real canvas and production-art work. Six concurrent
-  // mobile contexts could starve the dev server long enough to produce a
-  // blank boot even though each flow was healthy in isolation. Two workers
-  // still exercise concurrent clients while keeping the release gate stable.
-  workers: 2,
+  // Phaser boot performs real canvas and production-art work. CI runners use
+  // one worker so the full production-art suites cannot starve each other;
+  // the dedicated cold-client test still verifies true concurrent play.
+  workers: process.env.CI ? 1 : 2,
   timeout: 30_000,
   expect: { timeout: 8_000 },
   reporter: [["list"], ["html", { outputFolder: ".gstack/playwright-report", open: "never" }]],

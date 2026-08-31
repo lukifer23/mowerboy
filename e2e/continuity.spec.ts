@@ -77,6 +77,7 @@ test("the visible Play button advances and dismisses both first-run tutorials", 
 
 test("all four touch control schemes move both real activities", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "fold-inner-fullscreen", "Control matrix runs once at the primary Fold viewport.");
+  test.setTimeout(60_000);
   const errors: string[] = [];
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   page.on("pageerror", (error) => errors.push(error.message));
@@ -133,7 +134,10 @@ test("touch cancellation clears pointer and pad ownership in both activities", a
   for (const activity of activities) {
     for (const control of ["magnet", "pad"] as const) {
       await page.goto(activity.url);
-      await expect.poll(async () => page.evaluate(() => window.__MOWERBOY_TEST__?.snapshot().activeScenes ?? [])).toContain(activity.scene);
+      await expect.poll(
+        async () => page.evaluate(() => window.__MOWERBOY_TEST__?.snapshot().activeScenes ?? []),
+        { timeout: 20_000 },
+      ).toContain(activity.scene);
       await page.evaluate((value) => {
         const current = JSON.parse(localStorage.getItem("mowerboy-save-v1")!);
         localStorage.setItem("mowerboy-save-v1", JSON.stringify({ ...current, control: value }));
