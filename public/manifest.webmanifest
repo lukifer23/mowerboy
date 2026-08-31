@@ -3,6 +3,7 @@
   "short_name": "MowerBoy",
   "description": "A gentle mowing and vacuuming game. One finger. No fail.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#143018",
