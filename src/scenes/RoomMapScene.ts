@@ -5,6 +5,8 @@ import { audio } from "../systems/AudioEngine";
 import { patchSave, save } from "../systems/Save";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { bigButton, labelText } from "../ui/BigButton";
+import { clearSceneAccessibleControls, registerAccessibleControl } from "../systems/Accessibility";
+import { authoredFurniture, roomRugRect } from "../systems/RoomLayout";
 
 const FLOOR_COLOR: Record<FloorType, number> = {
   carpet: 0x8ba57e, rug: 0x315f73, hardwood: 0xb97942, tile: 0xd8ddd8, concrete: 0x858a88,
@@ -38,6 +40,7 @@ export class RoomMapScene extends Phaser.Scene {
   }
 
   private redraw(): void {
+    clearSceneAccessibleControls(this);
     this.children.removeAll(true);
     const v = getViewport(this), w = v.width, h = v.height;
     this.scroll = 0;
@@ -64,11 +67,12 @@ export class RoomMapScene extends Phaser.Scene {
       const col = i % cols, row = Math.floor(i / cols);
       const x = margin + cardW / 2 + col * (cardW + gap), y = top + cardH / 2 + row * (cardH + gap);
       const finished = save().cleanedRooms.includes(room.id);
+      const selected = save().selectedRoom === room.id;
       const base = room.floors.find((floor) => floor !== "rug") ?? room.floors[0];
       const card = this.add.rectangle(x, y, cardW, cardH, FLOOR_COLOR[base], .98)
-        .setStrokeStyle(finished ? 6 : 4, finished ? 0xffd54f : 0xf4f1de).setInteractive();
+        .setStrokeStyle(selected ? 7 : 4, selected ? 0xffd54f : 0xf4f1de).setInteractive();
       const preview = this.add.graphics();
-      this.drawPreview(preview, x - cardW * .38, y - cardH * .34, cardW * .76, cardH * .5, room.floors);
+      this.drawPreview(preview, x - cardW * .38, y - cardH * .34, cardW * .76, cardH * .5, room);
       const name = this.add.text(x, y + cardH * .26, room.name, {
         fontFamily: "system-ui", fontSize: `${v.compact ? 16 : 18}px`, fontStyle: "bold", color: "#f4f1de", align: "center",
         wordWrap: { width: cardW - 12 }, stroke: "#102b35", strokeThickness: 4,
@@ -80,21 +84,36 @@ export class RoomMapScene extends Phaser.Scene {
         patchSave({ selectedRoom: room.id, lastActivity: "vacuum" });
         this.scene.start("vacuum-play", { roomId: room.id });
       });
+      registerAccessibleControl(this, card, `${room.name}, ${selected ? COPY.ready : COPY.tapClean}`, () => {
+        audio.unlock();
+        patchSave({ selectedRoom: room.id, lastActivity: "vacuum" });
+        this.scene.start("vacuum-play", { roomId: room.id });
+      });
       this.layer!.add([card, preview, name, badge]);
     });
     const rows = Math.ceil(ROOMS.length / cols), bottom = top + rows * (cardH + gap);
     this.minScroll = Math.min(0, h - v.safe.bottom - bottom);
   }
 
-  private drawPreview(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, floors: FloorType[]): void {
-    const base = floors.find((floor) => floor !== "rug") ?? floors[0];
+  private drawPreview(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, room: (typeof ROOMS)[number]): void {
+    const base = room.floors.find((floor) => floor !== "rug") ?? room.floors[0];
     g.fillStyle(FLOOR_COLOR[base], 1).fillRoundedRect(x, y, w, h, 9);
     g.lineStyle(3, base === "hardwood" ? 0x7c4a29 : 0xaab2ad, .65);
     for (let i = 1; i < 5; i++) { g.beginPath(); g.moveTo(x, y + h * i / 5); g.lineTo(x + w, y + h * i / 5); g.strokePath(); }
-    if (floors.includes("rug")) {
-      g.fillStyle(FLOOR_COLOR.rug, .95).fillRoundedRect(x + w * .25, y + h * .22, w * .5, h * .56, 7);
-      g.lineStyle(3, 0xd7a64a, 1).strokeRoundedRect(x + w * .28, y + h * .26, w * .44, h * .48, 5);
+    if (room.floors.includes("rug")) {
+      const rug = roomRugRect(room);
+      const rx = x + rug.x / room.width * w, ry = y + rug.y / room.height * h;
+      const rw = rug.w / room.width * w, rh = rug.h / room.height * h;
+      g.fillStyle(FLOOR_COLOR.rug, .95).fillRoundedRect(rx, ry, rw, rh, 5);
+      g.lineStyle(2, 0xd7a64a, 1).strokeRoundedRect(rx + 2, ry + 2, rw - 4, rh - 4, 4);
     }
-    g.fillStyle(0x6d4c41, .9).fillRoundedRect(x + w * .42, y + h * .36, w * .22, h * .28, 6);
+    for (const prop of authoredFurniture(room)) {
+      const px = x + prop.x / room.width * w, py = y + prop.y / room.height * h;
+      const pw = Math.max(4, prop.width / room.width * w), ph = Math.max(4, prop.height / room.height * h);
+      const color = prop.kind === "plant" ? 0x2e7d32 : prop.kind === "sofa" || prop.kind === "chair" ? 0x4f7896 : prop.kind === "bed" ? 0xd48696 : 0x6d4c41;
+      g.fillStyle(color, .94);
+      if (prop.shape === "circle" || prop.shape === "ellipse") g.fillEllipse(px, py, pw, ph);
+      else g.fillRoundedRect(px - pw / 2, py - ph / 2, pw, ph, 3);
+    }
   }
 }

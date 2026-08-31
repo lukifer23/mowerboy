@@ -37,7 +37,7 @@ Do **not** add: accounts, cloud, ads, analytics, competitive multiplayer, photor
 - Tests: Vitest 4 for pure functions plus Playwright 1.62 for real Chrome canvas/touch flows
 
 ```bash
-npm install
+npm ci
 npm start          # LAN + QR
 npm test
 npm run test:e2e
@@ -137,7 +137,7 @@ Zoom is **cover** the yard (`fitZoom`) so the lawn fills the screen; camera foll
 
 ## Content how-to
 
-**Mower:** add a `MowerDef` in `src/data/mowers.ts`, a top-down transparent `public/assets/mowers/<id>.png`, and a garage portrait at `public/assets/portraits/<id>.jpg`. If `kind` is new, also cover it in `drawMower.ts` so the resilient fallback remains complete.
+**Mower:** add a `MowerDef` in `src/data/mowers.ts`, a top-down transparent `public/assets/mowers/<id>.png`, and a garage portrait at `public/assets/portraits/<id>.webp`. Keep the lossless source outside `public`. If `kind` is new, also cover it in `drawMower.ts` so the resilient fallback remains complete.
 
 **Yard:** add a `LevelDef` in `src/data/levels.ts` with a `terrain` from `palette.ts`. Keep a `S`tart. Tests expect **20** authored levels, **14** mowers, and **8** powerups — update `src/data/mowers.test.ts` if those counts change.
 
@@ -153,9 +153,9 @@ Zoom is **cover** the yard (`fitZoom`) so the lawn fills the screen; camera foll
 npm test
 ```
 
-Covers 85 checks: grass cut/grow/completion, save migration, shape-aware world geometry, rounded paths/grouped fences, obstacle footprint masking/pickup safety, fourteen always-open mowers / twenty fresh-start yards / eight powerups, clustered vacuum debris, eight vacuums / twelve rooms, and wander seed stability.
+Covers 93 checks: resolved/swept movement, grass cut/grow/completion and incremental changes, save migration, material-aware audio profiles, shape-aware world geometry, rounded paths/grouped fences, obstacle footprint masking/pickup safety, fourteen always-open mowers / twenty fresh-start yards / eight powerups, clustered vacuum debris, eight vacuums / twelve rooms, and wander seed stability.
 
-`npm run test:e2e` runs 42 passing Chrome checks across phone portrait, phone landscape, Fold inner browser, Fold inner fullscreen, and tablet sizes (plus 48 intentional project skips so heavyweight matrices run only once). It drives both first-run tutorials through their visible Play buttons, both activities with held touch, all four control schemes, two simultaneous cold clients, keyboard/screen-reader mirrors, gallery swipes, Settings toggles without scroll jumps, latest-yard/latest-room continuity, HUD touch exclusion, progress and release-to-stop, Safe Home, Pause/Resume, Quiet, Finish, every gallery/Settings screen, every machine's production art, every authored yard/room startup, fresh-yard progress, and live resize. `npm run test:offline` proves the fingerprinted production shell and all 59 manifest assets reopen offline in both activities. `npm run test:soak` alternates both activities with full decorative animation for five minutes and records heap/error evidence in `.gstack/soak/latest.json`. `npm run test:fold -- --url=... --drag=x1,y1,x2,y2` attaches only to an existing Fold Chrome MowerBoy tab, has bounded connection/command timeouts, and never opens a browser.
+`npm run test:e2e` runs 47 passing Chrome checks across phone portrait, phone landscape, Fold inner browser, Fold inner fullscreen, and tablet sizes (plus 68 intentional project skips so heavyweight matrices run only once). It drives both first-run tutorials through their visible Play buttons, both activities with held touch, all four control schemes, two simultaneous cold clients, exact responsive accessibility mirrors, every room and pad direction, Safe Home live announcements, normal and Calm Motion, gallery swipes, Settings continuity, HUD touch exclusion, progress and release-to-stop, Pause/Resume, Quiet, Finish, every gallery/Settings screen, every machine's production art, every authored yard/room startup, fresh-yard progress, and live resize. `npm run test:offline` proves the fingerprinted 67-file production release reopens offline in both activities. `npm run test:sw-upgrade` covers atomic promotion, failure isolation, rollback, pruning, integrity, and active-only fetches. `npm run test:soak` alternates both activities with full decorative animation for five minutes and records heap/frame/resource evidence in `.gstack/soak/latest.json`. `npm run test:fold -- --url=... --drag=x1,y1,x2,y2` attaches only to an existing Fold Chrome MowerBoy tab, has bounded connection/command timeouts, and never opens a browser.
 
 The explicit `?test=1` routes expose a read-only `window.__MOWERBOY_TEST__.snapshot()` bridge. It reports real active-scene, machine, progress, camera, and viewport values; it does not replace or mock simulation.
 

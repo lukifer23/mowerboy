@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { MowerDef } from "../data/mowers";
 import { drawMowerFrame } from "./drawMower";
 import type { DriveableMachine } from "./DriveableMachine";
+import { stepDrivePose, type DrivePose } from "./driveMath";
 
 export class Mower implements DriveableMachine {
   def: MowerDef;
@@ -18,9 +19,9 @@ export class Mower implements DriveableMachine {
   speedMul = 1;
   headlights = false;
   private texKey: string;
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
-  private tex: Phaser.Textures.CanvasTexture;
+  private canvas?: HTMLCanvasElement;
+  private ctx?: CanvasRenderingContext2D;
+  private tex?: Phaser.Textures.CanvasTexture;
   private usesIllustratedSprite: boolean;
   private lastPaint = -1;
   private baseSize: number;
@@ -33,15 +34,17 @@ export class Mower implements DriveableMachine {
     this.def = def;
     this.x = x;
     this.y = y;
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = 256;
-    this.canvas.height = 256;
-    this.ctx = this.canvas.getContext("2d", { willReadFrequently: true })!;
     this.texKey = `mower-${def.id}-${Math.random().toString(36).slice(2, 6)}`;
-    this.paint(0, 0);
-    this.tex = scene.textures.addCanvas(this.texKey, this.canvas)!;
     const worldKey = `mower-world-${def.id}`;
     this.usesIllustratedSprite = scene.textures.exists(worldKey);
+    if (!this.usesIllustratedSprite) {
+      this.canvas = document.createElement("canvas");
+      this.canvas.width = 256;
+      this.canvas.height = 256;
+      this.ctx = this.canvas.getContext("2d", { willReadFrequently: true })!;
+      this.paint(0, 0);
+      this.tex = scene.textures.addCanvas(this.texKey, this.canvas)!;
+    }
     this.shadow = scene.add.ellipse(x, y + 10, def.radius * 2.2, def.radius * 1.1, 0x000000, 0.28).setDepth(4);
     this.sprite = scene.add.image(x, y, this.usesIllustratedSprite ? worldKey : this.texKey).setDepth(5);
     this.baseSize = def.radius * 4.5 * def.rig.spriteScale;
@@ -91,13 +94,19 @@ export class Mower implements DriveableMachine {
     };
   }
 
-  update(dt: number): void {
-    const desired = this.throttle * this.topSpeed;
-    const rate = (desired > this.speed ? this.def.accel : this.def.brake) * this.topSpeed;
-    if (this.speed < desired) this.speed = Math.min(desired, this.speed + rate * dt);
-    else this.speed = Math.max(desired, this.speed - rate * dt);
-    this.x += Math.cos(this.heading) * this.speed * dt;
-    this.y += Math.sin(this.heading) * this.speed * dt;
+  step(dt: number): DrivePose {
+    return stepDrivePose(this, { throttle: this.throttle }, {
+      topSpeed: this.topSpeed,
+      accel: this.def.accel,
+      brake: this.def.brake,
+    }, dt);
+  }
+
+  commitPose(pose: DrivePose, dt: number): void {
+    this.x = pose.x;
+    this.y = pose.y;
+    this.heading = pose.heading;
+    this.speed = pose.speed;
     const t = this.sceneTime();
     const working = Math.min(1, this.speed / Math.max(1, this.topSpeed));
     const engineVibe = Math.sin(t * (18 + working * 14)) * (0.32 + working * 0.62);
@@ -119,9 +128,13 @@ export class Mower implements DriveableMachine {
     this.shadow.setRotation(this.heading);
     if (!this.usesIllustratedSprite && t - this.lastPaint > 0.05) {
       this.paint(t, this.throttle);
-      this.tex.update();
+      this.tex?.update();
       this.lastPaint = t;
     }
+  }
+
+  update(dt: number): void {
+    this.commitPose(this.step(dt), dt);
   }
 
   clampTo(w: number, h: number, pad = 24): void {
@@ -133,7 +146,7 @@ export class Mower implements DriveableMachine {
     this.sprite.destroy();
     this.shadow.destroy();
     this.wheelLayer.destroy(true);
-    this.tex.destroy();
+    this.tex?.destroy();
   }
 
   private buildWheelAnimation(scene: Phaser.Scene): void {
@@ -160,6 +173,7 @@ export class Mower implements DriveableMachine {
   }
 
   private paint(time: number, throttle: number): void {
+    if (!this.ctx) return;
     this.ctx.clearRect(0, 0, 256, 256);
     drawMowerFrame(this.ctx, this.def, time, throttle, this.steering);
   }

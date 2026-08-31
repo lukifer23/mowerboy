@@ -12,18 +12,18 @@
     "./assets/mowers/storm.png", "./assets/mowers/nightowl.png", "./assets/mowers/sidekick.png",
     "./assets/mowers/meadowranger.png", "./assets/mowers/gardenscout.png", "./assets/mowers/utilitymate.png",
     "./assets/mowers/fieldgiant.png", "./assets/mowers/pivotranger.png",
-    "./assets/portraits/sprout.jpg", "./assets/portraits/backyard.jpg", "./assets/portraits/zipturn.jpg",
-    "./assets/portraits/yardking.jpg", "./assets/portraits/wideboy.jpg", "./assets/portraits/farmhand.jpg",
-    "./assets/portraits/storm.jpg", "./assets/portraits/nightowl.jpg", "./assets/portraits/sidekick.jpg",
-    "./assets/portraits/meadowranger.jpg", "./assets/portraits/gardenscout.jpg", "./assets/portraits/utilitymate.jpg",
-    "./assets/portraits/fieldgiant.jpg", "./assets/portraits/pivotranger.jpg"
+    "./assets/portraits/sprout.webp", "./assets/portraits/backyard.webp", "./assets/portraits/zipturn.webp",
+    "./assets/portraits/yardking.webp", "./assets/portraits/wideboy.webp", "./assets/portraits/farmhand.webp",
+    "./assets/portraits/storm.webp", "./assets/portraits/nightowl.webp", "./assets/portraits/sidekick.webp",
+    "./assets/portraits/meadowranger.webp", "./assets/portraits/gardenscout.webp", "./assets/portraits/utilitymate.webp",
+    "./assets/portraits/fieldgiant.webp", "./assets/portraits/pivotranger.webp"
   ],
   "vacuum": [
     "./assets/vacuums/brightupright.png", "./assets/vacuums/cyclone.png", "./assets/vacuums/quickstick.png",
     "./assets/vacuums/trailercan.png", "./assets/vacuums/workhorse.png", "./assets/vacuums/roundabout.png",
     "./assets/vacuums/hallkeeper.png", "./assets/vacuums/floorrider.png",
-    "./assets/portraits/brightupright.jpg", "./assets/portraits/cyclone.jpg", "./assets/portraits/quickstick.jpg",
-    "./assets/portraits/trailercan.jpg", "./assets/portraits/workhorse.jpg", "./assets/portraits/roundabout.jpg",
-    "./assets/portraits/hallkeeper.jpg", "./assets/portraits/floorrider.jpg"
+    "./assets/portraits/brightupright.webp", "./assets/portraits/cyclone.webp", "./assets/portraits/quickstick.webp",
+    "./assets/portraits/trailercan.webp", "./assets/portraits/workhorse.webp", "./assets/portraits/roundabout.webp",
+    "./assets/portraits/hallkeeper.webp", "./assets/portraits/floorrider.webp"
   ]
 }

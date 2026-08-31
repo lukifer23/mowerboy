@@ -1,13 +1,9 @@
 import Phaser from "phaser";
-import { MOWERS } from "../data/mowers";
 import { POWERUPS } from "../data/powerups";
 import { makeIconTexture, GLYPHS } from "../systems/icons";
-import { makeMowerCanvas } from "../systems/drawMower";
-import { ensurePropTextures } from "../systems/props";
 import { audio } from "../systems/AudioEngine";
 import { save } from "../systems/Save";
-import { VACUUMS } from "../data/vacuums";
-import { makeVacuumCanvas } from "../systems/drawVacuum";
+import { mowerById } from "../data/mowers";
 import { queueMowerAsset, queueVacuumAsset, showLoadOverlay, type LoadOverlay } from "../systems/AssetCatalog";
 
 function addCanvas(scene: Phaser.Scene, key: string, canvas: HTMLCanvasElement): void {
@@ -27,8 +23,8 @@ export class BootScene extends Phaser.Scene {
     this.loading = showLoadOverlay(this, "Starting MowerBoy");
     this.load.image("title-art", "assets/title.jpg");
     this.load.image("app-icon", "assets/icon.png");
-    queueMowerAsset(this, save().selectedMower);
-    queueVacuumAsset(this, save().selectedVacuum);
+    queueMowerAsset(this, save().selectedMower, true);
+    queueVacuumAsset(this, save().selectedVacuum, true);
     this.load.on("loaderror", () => {
       /* missing optional art is fine — procedural fallbacks exist */
     });
@@ -67,13 +63,7 @@ export class BootScene extends Phaser.Scene {
       }
     }
 
-    for (const m of MOWERS) {
-      addCanvas(this, `mower-card-${m.id}`, makeMowerCanvas(m, 0.2, 0.5));
-    }
-    for (const vacuum of VACUUMS) addCanvas(this, `vacuum-card-${vacuum.id}`, makeVacuumCanvas(vacuum));
-
-    ensurePropTextures(this);
-    audio.setProfile(MOWERS[1].engine);
+    audio.setProfile(mowerById(save().selectedMower).engine);
     audio.applyVolumes();
     void save();
     const params = new URLSearchParams(window.location.search);

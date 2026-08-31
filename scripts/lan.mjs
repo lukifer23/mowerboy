@@ -1,56 +1,25 @@
 #!/usr/bin/env node
-import { networkInterfaces } from "node:os";
+// Backward-compatible entry point. The gateway is the single implementation
+// for locked installs, build freshness, LAN discovery, QR hosting, and serving.
 import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const require = createRequire(import.meta.url);
-const port = Number(process.env.PORT || 5173);
-
-function lanIPs() {
-  const ips = [];
-  const nets = networkInterfaces();
-  for (const list of Object.values(nets)) {
-    if (!list) continue;
-    for (const n of list) {
-      const family = n.family === 4 || n.family === "IPv4";
-      if (family && !n.internal) ips.push(n.address);
-    }
-  }
-  return ips;
-}
-
-const ips = lanIPs();
-const urls = ips.map((ip) => `http://${ip}:${port}`);
-
-console.log("");
-console.log("  MowerBoy");
-console.log("  --------");
-console.log(`  This computer:  http://localhost:${port}`);
-if (urls.length === 0) {
-  console.log("  Tablet:         (no LAN IP found — check Wi-Fi)");
-} else {
-  console.log("  Open on iPad / phone (same Wi-Fi):");
-  for (const u of urls) console.log(`    ${u}`);
-}
-console.log("");
-console.log("  For a clean play view: tap Full screen, or Share → Add to Home Screen");
-console.log("  Tap the screen once if the engine is silent (iPad audio rule).");
-console.log("");
-
-try {
-  const qr = require("qrcode-terminal");
-  const best = urls[0] || `http://localhost:${port}`;
-  qr.generate(best, { small: true });
-  console.log(`  QR → ${best}`);
-  console.log("");
-} catch {
-  console.log("  (QR skipped — qrcode-terminal not installed yet)");
-}
-
-const vite = spawn("npx", ["vite", "--host", "0.0.0.0", "--port", String(port)], {
-  stdio: "inherit",
-  shell: process.platform === "win32",
+const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const child = spawn(process.execPath, [resolve(root, "scripts/gateway.mjs")], {
+  cwd: root,
   env: process.env,
+  stdio: "inherit",
 });
 
-vite.on("exit", (code) => process.exit(code ?? 0));
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => child.kill(signal));
+}
+child.on("error", (error) => {
+  console.error(`MowerBoy could not start: ${error.message}`);
+  process.exitCode = 1;
+});
+child.on("exit", (code, signal) => {
+  if (signal) process.kill(process.pid, signal);
+  else process.exit(code ?? 1);
+});

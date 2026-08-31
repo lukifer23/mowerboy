@@ -5,8 +5,9 @@ import { audio } from "../systems/AudioEngine";
 import { patchSave, save } from "../systems/Save";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { bigButton, labelText } from "../ui/BigButton";
-import { queueVacuumGalleryAssets } from "../systems/AssetCatalog";
-import { registerAccessibleControl } from "../systems/Accessibility";
+import { ensureVacuumFallbackTexture, queueVacuumGalleryAssets } from "../systems/AssetCatalog";
+import { clearSceneAccessibleControls, registerAccessibleControl } from "../systems/Accessibility";
+import { fitImageInside } from "../ui/fitImage";
 
 export class VacuumGarageScene extends Phaser.Scene {
   private index = 0;
@@ -39,6 +40,7 @@ export class VacuumGarageScene extends Phaser.Scene {
   }
 
   private redraw(): void {
+    clearSceneAccessibleControls(this);
     this.children.removeAll(true);
     this.dots = [];
     const v = getViewport(this), w = v.width, h = v.height;
@@ -54,9 +56,10 @@ export class VacuumGarageScene extends Phaser.Scene {
     VACUUMS.forEach((machine, i) => {
       const x = this.centerX + i * this.cardStep, selected = save().selectedVacuum === machine.id;
       const bg = this.add.rectangle(x, y, cardW, cardH, 0x23566a, .98).setStrokeStyle(selected ? 7 : 4, selected ? 0xfff176 : 0xe8f4f8).setInteractive();
-      const key = this.textures.exists(`vacuum-portrait-${machine.id}`) ? `vacuum-portrait-${machine.id}` : this.textures.exists(`vacuum-world-${machine.id}`) ? `vacuum-world-${machine.id}` : `vacuum-card-${machine.id}`;
+      const key = this.textures.exists(`vacuum-portrait-${machine.id}`) ? `vacuum-portrait-${machine.id}` : this.textures.exists(`vacuum-world-${machine.id}`) ? `vacuum-world-${machine.id}` : ensureVacuumFallbackTexture(this, machine.id);
       const artSize = Math.min(cardW * .74, cardH * .56);
-      const art = this.add.image(x, y - cardH * .1, key).setDisplaySize(artSize, artSize);
+      const art = this.add.image(x, y - cardH * .1, key);
+      fitImageInside(art, artSize, artSize);
       const name = this.add.text(x, y + cardH * .28, machine.name, { fontFamily: "system-ui", fontSize: `${v.compact ? 25 : 31}px`, color: "#f4f1de", fontStyle: "bold", stroke: "#102b35", strokeThickness: 5 }).setOrigin(.5);
       const detail = this.add.text(x, y + cardH * .38, machine.label, { fontFamily: "system-ui", fontSize: `${v.compact ? 16 : 19}px`, color: "#b2ebf2" }).setOrigin(.5);
       const ready = this.add.text(x, y + cardH * .46, selected ? COPY.ready : COPY.tapClean, { fontFamily: "system-ui", fontSize: `${v.compact ? 15 : 17}px`, color: selected ? "#fff59d" : "#f4f1de", fontStyle: "bold" }).setOrigin(.5);

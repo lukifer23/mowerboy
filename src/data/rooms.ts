@@ -1,12 +1,14 @@
 import type { DebrisType } from "../systems/debrisMath";
 
-export type FloorType = "carpet" | "rug" | "hardwood" | "tile" | "concrete";
+export type FloorMaterial = "carpet" | "rug" | "hardwood" | "tile" | "concrete";
+/** @deprecated Prefer FloorMaterial for shared room, debris, and audio contracts. */
+export type FloorType = FloorMaterial;
 export type RoomTheme = "home" | "school" | "workshop" | "community";
 
 export interface RoomDef {
   id: string;
   name: string;
-  floors: FloorType[];
+  floors: FloorMaterial[];
   theme: RoomTheme;
   width: number;
   height: number;

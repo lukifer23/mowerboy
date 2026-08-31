@@ -6,7 +6,7 @@ import { audio } from "../systems/AudioEngine";
 import { PALETTES } from "../systems/palette";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { bigButton, labelText } from "../ui/BigButton";
-import { registerAccessibleControl } from "../systems/Accessibility";
+import { clearSceneAccessibleControls, registerAccessibleControl } from "../systems/Accessibility";
 
 export class MapScene extends Phaser.Scene {
   private layer?: Phaser.GameObjects.Container;
@@ -40,6 +40,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   private redraw(): void {
+    clearSceneAccessibleControls(this);
     this.children.removeAll(true);
     const v = getViewport(this);
     const w = v.width;
@@ -64,8 +65,6 @@ export class MapScene extends Phaser.Scene {
     const cardH = Math.max(142, Math.min(190, cardW * 0.9));
     const top = v.safe.top + 132;
     const items = [...LEVELS.map((level) => ({ level, wander: false })), { level: null, wander: true }];
-    const nextId = LEVELS.find((level) => !save().completedYards.includes(level.id))?.id;
-
     items.forEach((item, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
@@ -73,11 +72,12 @@ export class MapScene extends Phaser.Scene {
       const y = top + cardH / 2 + row * (cardH + gap);
       const id = item.wander ? "wander" : item.level!.id;
       const done = save().completedYards.includes(id);
-      const next = id === nextId;
+      const selectedYard = save().selectedYard;
+      const selected = item.wander ? selectedYard.kind === "wander" : selectedYard.kind === "authored" && selectedYard.id === id;
       const terrain = item.wander ? "lush" : item.level!.terrain;
       const pal = PALETTES[terrain];
       const color = Phaser.Display.Color.GetColor(pal.tall[0], pal.tall[1], pal.tall[2]);
-      const card = this.add.rectangle(x, y, cardW, cardH, color, 0.98).setStrokeStyle(done || next ? 6 : 4, done || next ? 0xffd54f : 0xf4f1de).setInteractive();
+      const card = this.add.rectangle(x, y, cardW, cardH, color, 0.98).setStrokeStyle(selected ? 7 : 4, selected ? 0xffd54f : 0xf4f1de).setInteractive();
       const preview = this.add.graphics().setPosition(x - cardW * 0.38, y - cardH * 0.34);
       this.drawMiniMap(preview, item.level?.map, cardW * 0.76, cardH * 0.5, pal);
       const name = item.wander ? COPY.wander : item.level!.name;
@@ -92,19 +92,6 @@ export class MapScene extends Phaser.Scene {
         strokeThickness: 4,
       }).setOrigin(0.5);
       const badge = this.add.image(x + cardW * 0.32, y - cardH * 0.34, done ? "icon-check" : "icon-play").setDisplaySize(44, 44);
-      if (next && !done && !save().reducedMotion) {
-        const baseScaleX = badge.scaleX;
-        const baseScaleY = badge.scaleY;
-        this.tweens.add({
-          targets: badge,
-          scaleX: baseScaleX * 1.14,
-          scaleY: baseScaleY * 1.14,
-          duration: 620,
-          yoyo: true,
-          repeat: -1,
-          ease: "Sine.InOut",
-        });
-      }
       card.on("pointerup", () => {
         if (this.dragDistance > 12) return;
         audio.unlock();

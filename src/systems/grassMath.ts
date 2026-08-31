@@ -83,9 +83,11 @@ export function growRandom(
   count: number,
   rng: () => number,
   maxHeight = HEIGHT_TALL
-): number {
-  if (count <= 0) return 0;
+): { grown: number; indices: number[]; becameUncut: number } {
+  if (count <= 0) return { grown: 0, indices: [], becameUncut: 0 };
   let grown = 0;
+  let becameUncut = 0;
+  const changed = new Set<number>();
   const len = height.length;
   for (let k = 0; k < count * 4 && grown < count; k++) {
     const i = (rng() * len) | 0;
@@ -94,9 +96,11 @@ export function growRandom(
     if (h < maxHeight) {
       height[i] = (h + 1) as number;
       grown++;
+      changed.add(i);
+      if (h === HEIGHT_CUT) becameUncut++;
     }
   }
-  return grown;
+  return { grown, indices: [...changed], becameUncut };
 }
 
 export function remainingCells(height: Uint8Array, cols: number): { c: number; r: number }[] {

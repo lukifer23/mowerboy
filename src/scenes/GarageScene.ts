@@ -5,8 +5,9 @@ import { patchSave, save } from "../systems/Save";
 import { audio } from "../systems/AudioEngine";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { bigButton, labelText } from "../ui/BigButton";
-import { queueMowerGalleryAssets } from "../systems/AssetCatalog";
-import { registerAccessibleControl } from "../systems/Accessibility";
+import { ensureMowerFallbackTexture, queueMowerGalleryAssets } from "../systems/AssetCatalog";
+import { clearSceneAccessibleControls, registerAccessibleControl } from "../systems/Accessibility";
+import { fitImageInside } from "../ui/fitImage";
 
 export class GarageScene extends Phaser.Scene {
   private index = 0;
@@ -42,6 +43,7 @@ export class GarageScene extends Phaser.Scene {
   }
 
   private redraw(): void {
+    clearSceneAccessibleControls(this);
     this.children.removeAll(true);
     this.dots = [];
     const v = getViewport(this);
@@ -61,13 +63,15 @@ export class GarageScene extends Phaser.Scene {
       const x = this.centerX + i * this.cardStep;
       const selected = save().selectedMower === m.id;
       const bg = this.add.rectangle(x, y, cardW, cardH, 0x2e7d32, 0.98).setStrokeStyle(selected ? 7 : 4, selected ? 0xfff176 : 0xf4f1de).setInteractive();
-      const key = this.textures.exists(m.portrait) ? m.portrait : this.textures.exists(`mower-world-${m.id}`) ? `mower-world-${m.id}` : `mower-card-${m.id}`;
+      const key = this.textures.exists(m.portrait) ? m.portrait : this.textures.exists(`mower-world-${m.id}`) ? `mower-world-${m.id}` : ensureMowerFallbackTexture(this, m.id);
       const artSize = Math.min(cardW * 0.76, cardH * 0.58);
-      const art = this.add.image(x, y - cardH * 0.1, key).setDisplaySize(artSize, artSize);
+      const art = this.add.image(x, y - cardH * 0.1, key);
+      fitImageInside(art, artSize, artSize);
       const name = this.add.text(x, y + cardH * 0.28, m.name, {
         fontFamily: "system-ui", fontSize: `${v.compact ? 25 : 31}px`, color: "#f4f1de", fontStyle: "bold", stroke: "#102418", strokeThickness: 5,
       }).setOrigin(0.5);
-      const detail = `${m.label}  •  ${m.deckWidth}\" deck`;
+      const deck = m.deckWidth < 60 ? "Small deck" : m.deckWidth < 90 ? "Wide deck" : "Extra-wide deck";
+      const detail = `${m.label}  ·  ${deck}`;
       const kind = this.add.text(x, y + cardH * 0.38, detail, { fontFamily: "system-ui", fontSize: `${v.compact ? 16 : 19}px`, color: "#c8e6c9", align: "center" }).setOrigin(0.5);
       const ready = this.add.text(x, y + cardH * 0.46, selected ? COPY.ready : COPY.tapMow, { fontFamily: "system-ui", fontSize: `${v.compact ? 15 : 17}px`, color: selected ? "#fff59d" : "#f4f1de", fontStyle: "bold" }).setOrigin(0.5);
       bg.on("pointerup", () => {

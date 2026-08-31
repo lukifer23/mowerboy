@@ -1,5 +1,6 @@
 import type { EngineProfile } from "../data/mowers";
 import type { VacuumMotorProfile } from "../data/vacuums";
+import type { FloorMaterial } from "../data/rooms";
 import { save } from "./Save";
 
 export interface DriveAudioState {
@@ -201,6 +202,7 @@ export class AudioEngine {
     this.vacuumProfile = null;
     this.profile = p;
     if (this.started) this.rebuildOsc();
+    this.applyVolumes();
   }
 
   setVacuumProfile(p: VacuumMotorProfile): void {
@@ -219,12 +221,13 @@ export class AudioEngine {
     this.applyVolumes();
   }
 
-  setVacuumState(state: { throttle: number; speed: number; suctionLoad: number; brush: boolean; hardFloor: boolean }): void {
+  setVacuumState(state: VacuumAudioState): void {
     if (!this.ctx || !this.started || !this.vacuumProfile) return;
     const p = this.vacuumProfile;
     const k = Math.max(0, Math.min(1, state.throttle));
     const speed = Math.max(0, Math.min(1, state.speed));
     const load = Math.max(0, Math.min(1, state.suctionLoad));
+    const floor = vacuumFloorAcoustics(state.floor);
     const now = this.ctx.currentTime;
     const hz = (p.idleHz + (p.maxHz - p.idleHz) * (0.25 + k * 0.75)) * (1 - load * 0.035);
     for (let i = 0; i < this.osc.length; i++) this.osc[i].frequency.setTargetAtTime(hz * (i + 1), now, 0.06);
@@ -239,9 +242,9 @@ export class AudioEngine {
     this.bladeHarmonicGain.gain.setTargetAtTime(0.004 + p.whine * 0.012, now, 0.08);
     this.mechanicalOsc?.frequency.setTargetAtTime(72 + speed * 150, now, 0.08);
     this.mechanicalGain.gain.setTargetAtTime(0.003 + speed * 0.012, now, 0.1);
-    this.cutFilter.frequency.setTargetAtTime(state.hardFloor ? 1850 : 1120, now, 0.06);
-    this.cuttingGain.gain.setTargetAtTime(load * (state.hardFloor ? 0.022 : 0.034), now, 0.025);
-    this.raspFilter.frequency.setTargetAtTime(state.hardFloor ? 2850 : 1980, now, 0.06);
+    this.cutFilter.frequency.setTargetAtTime(floor.cutHz, now, 0.06);
+    this.cuttingGain.gain.setTargetAtTime(load * floor.cutGain, now, 0.025);
+    this.raspFilter.frequency.setTargetAtTime(floor.raspHz, now, 0.06);
     this.raspGain.gain.setTargetAtTime(load * 0.018, now, 0.025);
     this.chopOsc?.frequency.setTargetAtTime(46 + k * 36, now, 0.05);
     this.chopGain.gain.setTargetAtTime(state.brush ? 0.008 + speed * 0.014 : 0.0001, now, 0.06);
@@ -425,6 +428,24 @@ export class AudioEngine {
       ? this.osc.length + [this.lfo, this.bladeOsc, this.bladeHarmonic, this.mechanicalOsc, this.chopOsc, this.keepAlive].filter(Boolean).length
       : 0;
     return { state: this.ctx?.state ?? "locked", persistentSources };
+  }
+}
+
+export interface VacuumAudioState {
+  throttle: number;
+  speed: number;
+  suctionLoad: number;
+  brush: boolean;
+  floor: FloorMaterial;
+}
+
+export function vacuumFloorAcoustics(floor: FloorMaterial): { cutHz: number; cutGain: number; raspHz: number } {
+  switch (floor) {
+    case "tile": return { cutHz: 1850, cutGain: 0.022, raspHz: 2850 };
+    case "hardwood": return { cutHz: 1650, cutGain: 0.024, raspHz: 2650 };
+    case "concrete": return { cutHz: 1450, cutGain: 0.026, raspHz: 2380 };
+    case "rug": return { cutHz: 1250, cutGain: 0.032, raspHz: 2150 };
+    case "carpet": return { cutHz: 1120, cutGain: 0.034, raspHz: 1980 };
   }
 }
 

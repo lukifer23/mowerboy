@@ -9,7 +9,9 @@ import { toggleFullscreen } from "../systems/Fullscreen";
 import { save } from "../systems/Save";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { bigButton, labelText } from "../ui/BigButton";
-import { registerAccessibleControl } from "../systems/Accessibility";
+import { clearSceneAccessibleControls, registerAccessibleControl } from "../systems/Accessibility";
+import { ensureMowerFallbackTexture, ensureVacuumFallbackTexture } from "../systems/AssetCatalog";
+import { fitImageInside } from "../ui/fitImage";
 
 export class TitleScene extends Phaser.Scene {
   private dockY = 0;
@@ -29,6 +31,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private redraw(): void {
+    clearSceneAccessibleControls(this);
     this.children.removeAll(true);
     const v = getViewport(this), w = v.width, h = v.height;
     if (this.textures.exists("title-art")) {
@@ -74,11 +77,11 @@ export class TitleScene extends Phaser.Scene {
       .setStrokeStyle(6, mowing ? 0xc8e6c9 : 0xb2ebf2).setInteractive({ useHandCursor: true });
     const machine = mowing ? mowerById(save().selectedMower) : vacuumById(save().selectedVacuum);
     const key = mowing
-      ? (this.textures.exists(`mower-world-${machine.id}`) ? `mower-world-${machine.id}` : `mower-card-${machine.id}`)
-      : (this.textures.exists(`vacuum-world-${machine.id}`) ? `vacuum-world-${machine.id}` : `vacuum-card-${machine.id}`);
-    const artSize = Math.min(height * .66, width * .48);
+      ? (this.textures.exists(`portrait-${machine.id}`) ? `portrait-${machine.id}` : this.textures.exists(`mower-world-${machine.id}`) ? `mower-world-${machine.id}` : ensureMowerFallbackTexture(this, machine.id))
+      : (this.textures.exists(`vacuum-portrait-${machine.id}`) ? `vacuum-portrait-${machine.id}` : this.textures.exists(`vacuum-world-${machine.id}`) ? `vacuum-world-${machine.id}` : ensureVacuumFallbackTexture(this, machine.id));
     const artX = x - width * .22;
-    const art = this.add.image(artX, y - height * .03, key).setDisplaySize(artSize, artSize);
+    const art = this.add.image(artX, y - height * .03, key);
+    fitImageInside(art, width * .42, height * .7);
     const label = this.add.text(x + width * .18, y - 18, mowing ? COPY.mow : COPY.vacuum, {
       fontFamily: "system-ui", fontSize: `${Math.max(28, Math.min(42, height * .2))}px`, fontStyle: "bold", color: "#f4f1de", stroke: "#102418", strokeThickness: 6,
     }).setOrigin(.5);

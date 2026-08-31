@@ -153,12 +153,13 @@ export class GrassField {
   }
 
   grow(count: number, rng: () => number, maxH = HEIGHT_TALL): number {
-    const grown = growRandom(this.height, count, rng, maxH);
-    if (grown > 0) {
-      this.remaining = remainingCells(this.height, this.cols).length;
-      this.paintAll();
+    const result = growRandom(this.height, count, rng, maxH);
+    if (result.grown > 0) {
+      this.remaining = Math.min(this.mowable, this.remaining + result.becameUncut);
+      for (const index of result.indices) this.markCellAndNeighbors(index);
+      this.flush();
     }
-    return grown;
+    return result.grown;
   }
 
   helperSweep(n: number): number {
@@ -190,6 +191,18 @@ export class GrassField {
     const maxR = Math.min(this.rows - 1, Math.floor((y + reach) / this.cellSize));
     for (let r = minR; r <= maxR; r++) {
       for (let c = minC; c <= maxC; c++) this.dirty.add(r * this.cols + c);
+    }
+  }
+
+  private markCellAndNeighbors(index: number): void {
+    const c = index % this.cols;
+    const r = (index / this.cols) | 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nc = c + dc;
+        const nr = r + dr;
+        if (nc >= 0 && nr >= 0 && nc < this.cols && nr < this.rows) this.dirty.add(nr * this.cols + nc);
+      }
     }
   }
 

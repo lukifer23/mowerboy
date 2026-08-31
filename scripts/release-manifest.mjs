@@ -6,33 +6,70 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const dist = resolve(root, "dist");
-const paths = (await walk(dist)).filter((path) => !path.endsWith("release-manifest.json"));
-const files = [];
-for (const path of paths) {
-  const data = await readFile(path);
-  files.push({
-    url: `./${relative(dist, path).split(sep).join("/")}`,
+const catalog = JSON.parse(await readFile(resolve(root, "src/data/asset-manifest.json"), "utf8"));
+const catalogPacks = ["core", "mow", "vacuum"];
+const membership = new Map();
+
+for (const pack of catalogPacks) {
+  if (!Array.isArray(catalog[pack])) throw new Error(`Asset catalog pack ${pack} is missing.`);
+  for (const path of catalog[pack]) {
+    if (membership.has(path)) throw new Error(`Asset catalog path is assigned twice: ${path}`);
+    membership.set(path, pack);
+  }
+}
+
+const diskPaths = (await walk(dist)).filter((path) => !path.endsWith("release-manifest.json"));
+const entries = [];
+for (const diskPath of diskPaths) {
+  const data = await readFile(diskPath);
+  entries.push({
+    path: `./${relative(dist, diskPath).split(sep).join("/")}`,
     bytes: data.byteLength,
     sha256: createHash("sha256").update(data).digest("hex"),
   });
 }
-files.sort((a, b) => a.url.localeCompare(b.url));
-const release = createHash("sha256").update(files.map((file) => `${file.url}:${file.sha256}`).join("\n")).digest("hex").slice(0, 16);
-const kind = (url) => url.includes("/vacuums/") ? "vacuum" : url.includes("/mowers/") || /grass|fence|tree|pond|flower|house|rock|hay|bench|barn/.test(url) ? "mow" : "core";
-const manifest = {
-  schema: 1, release, generatedAt: new Date().toISOString(),
-  totals: {
-    files: files.length,
-    bytes: files.reduce((sum, file) => sum + file.bytes, 0),
-    javascriptBytes: files.filter((file) => file.url.endsWith(".js")).reduce((sum, file) => sum + file.bytes, 0),
-  },
-  packs: Object.fromEntries(["core", "mow", "vacuum"].map((pack) => [pack, files.filter((file) => kind(file.url) === pack).map((file) => file.url)])),
-  files,
+entries.sort((a, b) => a.path.localeCompare(b.path));
+
+const byPath = new Map(entries.map((entry) => [entry.path, entry]));
+for (const path of membership.keys()) {
+  if (!byPath.has(path)) throw new Error(`Cataloged release asset is missing from dist: ${path}`);
+}
+
+// The catalog is authoritative for activity ownership. Build output and other
+// shell files are core by default; no filename guessing is permitted here.
+const packs = { core: [], mow: [], vacuum: [] };
+for (const entry of entries) packs[membership.get(entry.path) ?? "core"].push(entry);
+
+const releaseId = createHash("sha256")
+  .update(entries.map((entry) => `${entry.path}:${entry.bytes}:${entry.sha256}`).join("\n"))
+  .digest("hex")
+  .slice(0, 16);
+const shellFiles = ["./", "./index.html", "./manifest.webmanifest", "./sw.js", "./asset-manifest.json"]
+  .filter((path, index, values) => path === "./" || (byPath.has(path) && values.indexOf(path) === index));
+const totals = {
+  files: entries.length,
+  bytes: entries.reduce((sum, entry) => sum + entry.bytes, 0),
+  javascriptBytes: entries.filter((entry) => entry.path.endsWith(".js")).reduce((sum, entry) => sum + entry.bytes, 0),
 };
-if (manifest.totals.javascriptBytes > 1_700_000) throw new Error(`JavaScript budget exceeded: ${manifest.totals.javascriptBytes} bytes`);
-if (manifest.totals.bytes > 19 * 1024 * 1024) throw new Error(`Release budget exceeded: ${manifest.totals.bytes} bytes`);
+const manifest = {
+  schema: 2,
+  releaseId,
+  // Kept for one release so older host dashboards can still display an ID.
+  release: releaseId,
+  generatedAt: new Date().toISOString(),
+  shellFiles,
+  totals,
+  packs,
+  files: entries,
+};
+
+const javascriptBudget = Number(process.env.MOWERBOY_JS_BUDGET_BYTES ?? 1_700_000);
+const releaseBudget = Number(process.env.MOWERBOY_RELEASE_BUDGET_BYTES ?? 17 * 1024 * 1024);
+if (totals.javascriptBytes > javascriptBudget) throw new Error(`JavaScript budget exceeded: ${totals.javascriptBytes} > ${javascriptBudget} bytes`);
+if (totals.bytes > releaseBudget) throw new Error(`Release budget exceeded: ${totals.bytes} > ${releaseBudget} bytes`);
+
 await writeFile(resolve(dist, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-console.log(`Release ${release}: ${files.length} files, ${(manifest.totals.bytes / 1048576).toFixed(2)} MiB, ${(manifest.totals.javascriptBytes / 1024).toFixed(1)} KiB JS.`);
+console.log(`Release ${releaseId}: ${totals.files} files, ${(totals.bytes / 1048576).toFixed(2)} MiB, ${(totals.javascriptBytes / 1024).toFixed(1)} KiB JS.`);
 
 async function walk(directory) {
   const output = [];

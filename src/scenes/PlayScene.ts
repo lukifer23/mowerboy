@@ -5,11 +5,11 @@ import { POWERUPS, type PowerupId } from "../data/powerups";
 import { COPY } from "../data/copy";
 import { wanderLevel } from "../gen/wander";
 import { GrassField } from "../systems/GrassField";
-import { buildLayout } from "../systems/Layout";
+import { buildLayout, type Prop } from "../systems/Layout";
 import { Mower } from "../systems/Mower";
 import { TouchDrive } from "../systems/TouchDrive";
 import { audio } from "../systems/AudioEngine";
-import { spawnProps, softCollide } from "../systems/props";
+import { spawnProps } from "../systems/props";
 import { completeYard, persist, save, visitYard } from "../systems/Save";
 import { mulberry32 } from "../systems/grassMath";
 import { bigButton, labelText } from "../ui/BigButton";
@@ -18,6 +18,9 @@ import { ActivityHud } from "../ui/ActivityHud";
 import { queueMowerAsset, queueMowingWorldAssets, showLoadOverlay, type LoadOverlay } from "../systems/AssetCatalog";
 import { rectOf, worldBoundsToScreen, type ActivityDiagnostics } from "../systems/Diagnostics";
 import { ActivityLifecycle } from "../systems/ActivityLifecycle";
+import { resolveDrivePose, type DrivePose } from "../systems/driveMath";
+import { ActivityPad } from "../ui/ActivityPad";
+import { ActivityOverlays } from "../ui/ActivityOverlays";
 
 interface ActivePower {
   id: PowerupId;
@@ -36,8 +39,6 @@ export class PlayScene extends Phaser.Scene {
   private helperRate = 0;
   private helperAcc = 0;
   private paused = false;
-  private pauseLayer?: Phaser.GameObjects.Container;
-  private tutLayer?: Phaser.GameObjects.Container;
   private celeLayer?: Phaser.GameObjects.Container;
   private powers: ActivePower[] = [];
   private sparkleBits: Phaser.GameObjects.Arc[] = [];
@@ -46,9 +47,11 @@ export class PlayScene extends Phaser.Scene {
   private growAcc = 0;
   private birdAcc = 0;
   private levelId = "home";
+  private wanderSeed?: number;
   private clippings!: Phaser.GameObjects.Particles.ParticleEmitter;
   private night?: Phaser.GameObjects.Rectangle;
-  private padLayer?: Phaser.GameObjects.Container;
+  private pad?: ActivityPad;
+  private overlays!: ActivityOverlays;
   private uiCam!: Phaser.Cameras.Scene2D.Camera;
   private terrain: TerrainId = "lush";
   private cameraFocus!: Phaser.GameObjects.Zone;
@@ -62,12 +65,14 @@ export class PlayScene extends Phaser.Scene {
   private baseNight = false;
   private powerSignature = "";
   private rainAcc = 0;
-  private lastHomeTap = -10000;
-  private homeConfirm?: Phaser.GameObjects.Text;
   private cleanedUp = false;
   private loading?: LoadOverlay;
   private lifecycle!: ActivityLifecycle;
-  private collisionProps: Parameters<typeof softCollide>[3] = [];
+  private collisionProps: Prop[] = [];
+
+  private get tutLayer(): Phaser.GameObjects.Container | undefined {
+    return this.overlays?.tutorialLayer;
+  }
 
   diagnostics(): ActivityDiagnostics {
     const viewport = getViewport(this);
@@ -114,14 +119,15 @@ export class PlayScene extends Phaser.Scene {
     const data = this.scene.settings.data as { levelId?: string; mowerId?: string; freeMow?: boolean; wander?: number } | undefined;
     this.freeMow = Boolean(data?.freeMow);
     this.levelId = data?.wander !== undefined ? "wander" : data?.levelId ?? "home";
-    const level =
-      this.levelId.startsWith("wander") || data?.wander
-        ? wanderLevel(data?.wander ?? (Date.now() & 0xffff))
-        : levelById(this.levelId);
+    const savedYard = save().selectedYard;
+    this.wanderSeed = this.levelId.startsWith("wander")
+      ? (data?.wander ?? (savedYard.kind === "wander" ? savedYard.seed : Date.now() & 0xffff)) >>> 0
+      : undefined;
+    const level = this.wanderSeed !== undefined ? wanderLevel(this.wanderSeed) : levelById(this.levelId);
     this.terrain = level.terrain;
-    visitYard(level.id.startsWith("wander") ? "wander" : level.id, data?.wander);
+    visitYard(level.id.startsWith("wander") ? "wander" : level.id, this.wanderSeed);
 
-    const layout = buildLayout(level, this.levelId.length * 13);
+    const layout = buildLayout(level, this.wanderSeed ?? this.levelId.length * 13);
     this.grass = new GrassField(this, layout, level.terrain);
     this.props = spawnProps(this, layout.props, level.terrain);
     this.collisionProps = layout.props.filter((prop) => prop.kind !== "bridge");
@@ -130,6 +136,7 @@ export class PlayScene extends Phaser.Scene {
     this.mower = new Mower(this, def, layout.startX, layout.startY);
     audio.setProfile(def.engine);
     this.drive = new TouchDrive(this, this.mower, (x, y) => this.isWorldInput(x, y));
+    this.overlays = new ActivityOverlays(this, (object) => this.pinUI(object), 0x102418);
 
     this.cameraFocus = this.add.zone(this.mower.x, this.mower.y, 2, 2);
     this.targetMarker = this.add.graphics().setDepth(2);
@@ -146,7 +153,7 @@ export class PlayScene extends Phaser.Scene {
     this.spawnPickups(layout.pickups);
     this.buildAmbience();
     this.buildHud();
-    if (save().control === "pad") this.buildPad();
+    if (save().control === "pad") this.pad = new ActivityPad(this, this.drive, 0x2e7d32);
 
     this.baseNight = def.id === "nightowl" || Boolean(level.evening) || level.terrain === "night";
     if (this.baseNight) {
@@ -182,8 +189,7 @@ export class PlayScene extends Phaser.Scene {
     if (this.night) world.push(this.night);
     this.uiCam.ignore(world);
     if (this.hud) this.pinUI(this.hud.container);
-    if (this.padLayer) this.pinUI(this.padLayer);
-    if (this.tutLayer) this.pinUI(this.tutLayer);
+    if (this.pad) this.pinUI(this.pad.container);
     if (this.powerHud) this.pinUI(this.powerHud);
   }
 
@@ -196,6 +202,19 @@ export class PlayScene extends Phaser.Scene {
     const dt = Math.min(0.05, delta / 1000);
     this.drive.update(dt);
 
+    const mulch = this.hasPower("mulcher");
+    this.mower.deckMul = this.hasPower("wide") ? 1.55 : 1;
+    this.mower.speedMul = this.hasPower("turbo") ? 1.45 : 1;
+    const current: DrivePose = { x: this.mower.x, y: this.mower.y, heading: this.mower.heading, speed: this.mower.speed };
+    const resolved = resolveDrivePose(current, this.mower.step(dt), {
+      width: this.grass.worldW,
+      height: this.grass.worldH,
+      radius: this.mower.def.radius,
+      pad: 24,
+      obstacles: this.collisionProps,
+    });
+    this.mower.commitPose(resolved, dt);
+
     const speedRatio = Math.min(1, this.mower.speed / Math.max(1, this.mower.topSpeed));
     const lead = save().reducedMotion ? 18 : 42 + speedRatio * 54;
     const focusX = this.mower.x + Math.cos(this.mower.heading) * lead;
@@ -206,17 +225,6 @@ export class PlayScene extends Phaser.Scene {
     );
     this.drawTargetMarker();
     this.drawMowerEffects();
-
-    const hit = softCollide(this.mower.x, this.mower.y, this.mower.def.radius, this.collisionProps);
-    this.mower.x = hit.x;
-    this.mower.y = hit.y;
-    this.mower.clampTo(this.grass.worldW, this.grass.worldH);
-    this.mower.update(dt);
-
-    const mulch = this.hasPower("mulcher");
-    const wide = this.hasPower("wide") ? 1.55 : 1;
-    this.mower.deckMul = wide;
-    this.mower.speedMul = this.hasPower("turbo") ? 1.45 : 1;
 
     const { cut } = this.grass.cutMower(
       this.mower.x,
@@ -448,8 +456,10 @@ export class PlayScene extends Phaser.Scene {
       const c = this.add.container(s.x, s.y, [glow, circle, icon]).setDepth(4);
       c.setData("id", s.id);
       c.setSize(58, 58);
-      this.tweens.add({ targets: c, y: s.y - 10, duration: 760, yoyo: true, repeat: -1, ease: "sine.inOut" });
-      if (!save().reducedMotion) this.tweens.add({ targets: glow, scale: 1.35, alpha: 0.08, duration: 900, yoyo: true, repeat: -1 });
+      if (!save().reducedMotion) {
+        this.tweens.add({ targets: c, y: s.y - 10, duration: 760, yoyo: true, repeat: -1, ease: "sine.inOut" });
+        this.tweens.add({ targets: glow, scale: 1.35, alpha: 0.08, duration: 900, yoyo: true, repeat: -1 });
+      }
       this.pickups.push(c);
     }
   }
@@ -690,45 +700,10 @@ export class PlayScene extends Phaser.Scene {
     this.drive.abortInput();
     this.lifecycle.resize();
     this.layoutHud();
-    this.layoutPad();
+    this.pad?.layout();
     this.fitZoom(this.grass.worldW, this.grass.worldH);
+    this.overlays.layout();
     this.layoutActiveOverlay();
-  }
-
-  private buildPad(): void {
-    this.padLayer = this.add.container(0, 0).setDepth(19).setScrollFactor(0);
-    const controls: { circle: Phaser.GameObjects.Arc; text: Phaser.GameObjects.Text; dir: "up" | "down" | "left" | "right" }[] = [];
-    const mk = (dir: "up" | "down" | "left" | "right", label: string) => {
-      const c = this.add.circle(0, 0, 44, 0x2e7d32, 0.9).setStrokeStyle(3, 0xf4f1de);
-      const t = this.add.text(0, 0, label, { fontSize: "34px", color: "#fff" }).setOrigin(0.5);
-      c.setInteractive();
-      c.on("pointerdown", () => this.drive.setPad(dir, true));
-      c.on("pointerup", () => this.drive.setPad(dir, false));
-      c.on("pointerout", () => this.drive.setPad(dir, false));
-      c.on("pointercancel", () => this.drive.abortInput());
-      this.padLayer!.add([c, t]);
-      controls.push({ circle: c, text: t, dir });
-    };
-    mk("up", "▲");
-    mk("down", "▼");
-    mk("left", "◀");
-    mk("right", "▶");
-    this.padLayer.setData("controls", controls);
-    this.layoutPad();
-  }
-
-  private layoutPad(): void {
-    if (!this.padLayer) return;
-    const v = getViewport(this);
-    const centerX = v.safe.left + (v.mode === "phone-portrait" ? 118 : 132);
-    const centerY = v.height - v.safe.bottom - (v.mode === "phone-landscape" ? 102 : 126);
-    const controls = this.padLayer.getData("controls") as { circle: Phaser.GameObjects.Arc; text: Phaser.GameObjects.Text; dir: "up" | "down" | "left" | "right" }[];
-    for (const item of controls ?? []) {
-      const dx = item.dir === "left" ? -74 : item.dir === "right" ? 74 : 0;
-      const dy = item.dir === "up" ? -68 : item.dir === "down" ? 68 : 0;
-      item.circle.setPosition(centerX + dx, centerY + dy);
-      item.text.setPosition(centerX + dx, centerY + dy);
-    }
   }
 
   private togglePause(): void {
@@ -736,51 +711,21 @@ export class PlayScene extends Phaser.Scene {
     this.paused = !this.paused;
     this.drive.abortInput();
     if (!this.paused) {
-      this.pauseLayer?.destroy();
-      this.pauseLayer = undefined;
+      this.overlays.dismissPause();
       return;
     }
-    const w = this.scale.width;
-    const h = this.scale.height;
-    this.pauseLayer = this.add.container(0, 0).setDepth(30).setScrollFactor(0);
-    const bg = this.add.rectangle(w / 2, h / 2, w, h, 0x102418, 0.72).setInteractive();
-    const title = labelText(this, w / 2, h / 2 - 80, COPY.pause, 42);
-    const go = bigButton(this, w / 2, h / 2 + 20, "icon-play", COPY.resume, () => this.togglePause(), 110);
-    this.pauseLayer.add([bg, title, go]);
-    this.pauseLayer.setData("layout", { bg, title, go });
-    this.pinUI(this.pauseLayer);
+    this.overlays.showPause(() => this.togglePause());
   }
 
   private showTutorial(): void {
-    const w = this.scale.width;
-    const h = this.scale.height;
-    const steps = [COPY.tutorial1, COPY.tutorial2, COPY.tutorial3];
-    let i = 0;
-    const layer = this.add.container(0, 0).setDepth(40).setScrollFactor(0);
-    this.tutLayer = layer;
-    const bg = this.add.rectangle(w / 2, h / 2, w, h, 0x102418, 0.45).setInteractive();
-    const msg = labelText(this, w / 2, h - 168, steps[0], 32);
-    const finger = this.add.circle(w / 2 - 62, h * .46, 25, 0xffd6b5, 1).setStrokeStyle(5, 0x5d4037);
-    const tip = this.add.circle(w / 2 - 62, h * .46 - 25, 12, 0xffd6b5, 1).setStrokeStyle(4, 0x5d4037);
-    const trail = this.add.rectangle(w / 2, h * .46, 128, 8, 0xfff176, .7).setOrigin(.5);
-    if (!save().reducedMotion) this.tweens.add({ targets: [finger, tip], x: `+=124`, duration: 1150, yoyo: true, repeat: -1, ease: "Sine.InOut" });
-    let advance = () => {};
-    const next = bigButton(this, w / 2, h - 88, "icon-play", COPY.play, () => advance(), 96);
-    advance = () => {
-      i++;
-      if (i >= steps.length) {
+    this.overlays.showTutorial(
+      [COPY.tutorial1, COPY.tutorial2, COPY.tutorial3],
+      0xfff176,
+      () => {
         save().seenTutorial = true;
         persist();
-        layer.destroy();
-        this.tutLayer = undefined;
-        return;
       }
-      msg.setText(steps[i]);
-    };
-    bg.on("pointerup", advance);
-    layer.add([bg, trail, finger, tip, msg, next]);
-    layer.setData("layout", { bg, msg, next });
-    this.pinUI(layer);
+    );
   }
 
   private celebrate(): void {
@@ -799,7 +744,7 @@ export class PlayScene extends Phaser.Scene {
     const hudLayout = playHudLayout(getViewport(this));
     const home = bigButton(this, hudLayout.homeX, hudLayout.y, "icon-home", COPY.home, () => this.goHome(), 80).setScale(hudLayout.size / 80);
     const again = bigButton(this, w / 2 - 90, h / 2 + 120, "icon-play", COPY.again, () => {
-      this.scene.restart({ levelId: this.levelId, freeMow: this.freeMow });
+      this.scene.restart({ levelId: this.levelId, freeMow: this.freeMow, wander: this.wanderSeed });
     }, 96);
     const map = bigButton(this, w / 2 + 90, h / 2 + 120, "icon-map", COPY.map, () => this.goMap(), 96);
     this.celeLayer.add([bg, check, msg, reward, home, again, map]);
@@ -821,41 +766,16 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private goHome(): void {
-    if (save().safeHome && this.time.now - this.lastHomeTap > 1700) {
-      this.lastHomeTap = this.time.now;
-      this.homeConfirm?.destroy();
-      const v = getViewport(this);
-      this.homeConfirm = this.add.text(v.safe.left + 18, v.safe.top + 112, COPY.homeAgain, {
-        fontFamily: "system-ui", fontSize: "20px", fontStyle: "bold", color: "#fff59d",
-        backgroundColor: "rgba(16,36,24,0.88)", padding: { x: 12, y: 8 },
-      }).setDepth(32).setScrollFactor(0);
-      this.pinUI(this.homeConfirm);
-      this.time.delayedCall(1700, () => {
-        this.homeConfirm?.destroy();
-        this.homeConfirm = undefined;
-      });
-      return;
-    }
-    audio.stop();
-    this.cleanup();
-    this.scene.start("title");
+    this.overlays.requestHome(() => {
+      audio.stop();
+      this.cleanup();
+      this.scene.start("title");
+    });
   }
 
   private layoutActiveOverlay(): void {
     const w = this.scale.width;
     const h = this.scale.height;
-    if (this.pauseLayer) {
-      const refs = this.pauseLayer.getData("layout") as { bg: Phaser.GameObjects.Rectangle; title: Phaser.GameObjects.Text; go: Phaser.GameObjects.Container };
-      refs.bg.setPosition(w / 2, h / 2).setDisplaySize(w, h);
-      refs.title.setPosition(w / 2, h / 2 - 80);
-      refs.go.setPosition(w / 2, h / 2 + 28);
-    }
-    if (this.tutLayer) {
-      const refs = this.tutLayer.getData("layout") as { bg: Phaser.GameObjects.Rectangle; msg: Phaser.GameObjects.Text; next: Phaser.GameObjects.Container };
-      refs.bg.setPosition(w / 2, h / 2).setDisplaySize(w, h);
-      refs.msg.setPosition(w / 2, h - getViewport(this).safe.bottom - 170);
-      refs.next.setPosition(w / 2, h - getViewport(this).safe.bottom - 88);
-    }
     if (this.celeLayer) {
       const refs = this.celeLayer.getData("layout") as { bg: Phaser.GameObjects.Rectangle; check: Phaser.GameObjects.Image; msg: Phaser.GameObjects.Text; reward: Phaser.GameObjects.Text; home: Phaser.GameObjects.Container; again: Phaser.GameObjects.Container; map: Phaser.GameObjects.Container };
       const hudLayout = playHudLayout(getViewport(this));
@@ -917,6 +837,8 @@ export class PlayScene extends Phaser.Scene {
   private cleanup(): void {
     if (this.cleanedUp) return;
     this.cleanedUp = true;
+    this.overlays?.destroy();
+    this.pad?.destroy();
     this.drive.destroy();
     this.mower.destroy();
     this.grass.destroy();

@@ -7,6 +7,9 @@ const viewports = [
   ["fold-inner-fullscreen", { width: 832, height: 749 }],
   ["tablet", { width: 1024, height: 768 }],
 ] as const;
+const e2ePort = Number(process.env.MOWERBOY_E2E_PORT ?? 5176);
+const externalBaseUrl = process.env.MOWERBOY_E2E_URL;
+const baseURL = externalBaseUrl ?? `http://127.0.0.1:${e2ePort}`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -20,7 +23,7 @@ export default defineConfig({
   expect: { timeout: 8_000 },
   reporter: [["list"], ["html", { outputFolder: ".gstack/playwright-report", open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL,
     channel: "chrome",
     headless: true,
     trace: "retain-on-failure",
@@ -31,10 +34,17 @@ export default defineConfig({
     name,
     use: { viewport, hasTouch: true, isMobile: true },
   })),
-  webServer: {
-    command: "npm run dev",
-    url: "http://127.0.0.1:5173",
-    reuseExistingServer: true,
-    timeout: 30_000,
+  webServer: externalBaseUrl ? undefined : {
+    command: "node scripts/gateway.mjs",
+    url: `${baseURL}/healthz`,
+    reuseExistingServer: false,
+    timeout: 180_000,
+    env: {
+      ...process.env,
+      PORT: String(e2ePort),
+      MOWERBOY_HOST: "127.0.0.1",
+      MOWERBOY_NO_OPEN: "1",
+      MOWERBOY_FORCE_BUILD: "1",
+    },
   },
 });

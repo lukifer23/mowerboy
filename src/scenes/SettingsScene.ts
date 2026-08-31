@@ -5,7 +5,7 @@ import { audio } from "../systems/AudioEngine";
 import { bigButton, labelText } from "../ui/BigButton";
 import { bindSceneResize, getViewport } from "../systems/Viewport";
 import { isFullscreen, toggleFullscreen } from "../systems/Fullscreen";
-import { registerAccessibleControl, setAccessibleLabel } from "../systems/Accessibility";
+import { clearSceneAccessibleControls, registerAccessibleControl, setAccessibleLabel } from "../systems/Accessibility";
 
 export class SettingsScene extends Phaser.Scene {
   private layer?: Phaser.GameObjects.Container;
@@ -34,6 +34,7 @@ export class SettingsScene extends Phaser.Scene {
 
   private redraw(resetScroll = true): void {
     const previousScroll = this.scroll;
+    clearSceneAccessibleControls(this);
     this.children.removeAll(true);
     const v = getViewport(this);
     const w = v.width;

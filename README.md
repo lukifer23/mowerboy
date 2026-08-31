@@ -14,13 +14,13 @@ Designed for simple, accessible one-finger play on an iPad, phone, or tablet, ho
 2. After that, double-click **MowerBoy** on the Desktop.
 3. A friendly host page opens by itself. Wait for **Ready to play**, then scan the large QR code with the iPad camera.
 
-The computer needs Node.js 20 or newer installed once by whoever sets up the game. After that, the shortcut installs locked game dependencies when needed, builds only when the game changed, starts the production gateway, and shows every usable same-Wi-Fi address. No terminal or folder navigation is required for everyday play; a friendly message appears if the one-time Node setup is missing. It prefers port 5173, automatically uses the next open port if another local program already owns 5173, and reopens the existing dashboard instead of starting a duplicate when clicked twice.
+The computer needs Node.js `^20.19.0` or `>=22.12.0` installed once by whoever sets up the game. After that, the shortcut installs locked game dependencies when needed, builds only when the game changed, starts the production gateway, and shows every usable same-Wi-Fi address. No terminal or folder navigation is required for everyday play; a friendly message appears if the one-time Node setup is missing. It prefers port 5173, automatically uses the next open port if another local program already owns 5173, and reopens an existing dashboard only when its source fingerprint matches the current checkout.
 
 ## Terminal setup
 
 On the **Mac or Windows** computer:
 
-1. Install [Node.js](https://nodejs.org) 20 or newer if you don’t have it.
+1. Install [Node.js](https://nodejs.org) `^20.19.0` or `>=22.12.0` if you don’t have it.
 2. Open a terminal in this folder and run:
 
 ```bash
@@ -89,13 +89,14 @@ Parent keys on a computer: **WASD** or arrows.
 |---|---|
 | `npm start` | Production gateway, browser host dashboard, LAN URLs, QR, health check, and stale-build detection |
 | `npm test` | Unit tests |
-| `npm run test:e2e` | 42 passing Chrome checks: tutorials, touch/resize, controls, accessibility mirrors, concurrent cold starts, galleries, continuity, production art, and every yard/room startup |
+| `npm run test:e2e` | 47 passing Chrome checks: tutorials, touch/resize, controls, accessibility mirrors, concurrent cold starts, galleries, continuity, production art, and every yard/room startup |
+| `npm run test:sw-upgrade` | Exercises the real worker code through promotion, interrupted/corrupt staging, quota isolation, rollback, pruning, and active-only fetches |
 | `npm run test:offline` | Builds/serves production, disables networking, and proves both activities reopen with their real cached machine art |
 | `npm run test:soak` | Five-minute alternating Mow/Vacuum cleanup and heap check |
 | `npm run test:fold -- --url=… --drag=x1,y1,x2,y2` | Attach to an existing Fold Chrome tab for a physical-device touch/screenshot check; never opens a browser |
 | `npm run build` | Production build |
 | `npm run serve` | Build, then LAN preview |
-| `npm run verify` | Catalog/release manifests, service-worker syntax, typecheck, production build, 85 unit tests, 42 browser checks, and production-offline replay |
+| `npm run verify` | Catalog/release manifests, service-worker upgrade tests, typecheck, production build, 93 unit tests, 47 browser checks, gateway smoke, and production-offline replay |
 
 ## Docs
 

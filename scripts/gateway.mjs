@@ -14,9 +14,13 @@ import { fileURLToPath } from "node:url";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const dist = resolve(root, "dist");
 const stampPath = resolve(dist, ".mowerboy-build.json");
+const dependencyStampPath = resolve(root, "node_modules/.mowerboy-dependencies.json");
 const host = process.env.MOWERBOY_HOST || "0.0.0.0";
 const requestedPort = validPort(process.env.PORT || "5173");
-const existingUrl = process.env.PORT ? null : await findExistingGateway(requestedPort);
+if (!supportedNode(process.versions.node)) stop(`Node ^20.19.0 or >=22.12.0 is required. Found ${process.version}.`);
+if (!existsSync(resolve(root, "package-lock.json"))) stop("package-lock.json is missing. Restore the MowerBoy folder and try again.");
+const sourceHash = await hashInputs();
+const existingUrl = process.env.PORT ? null : await findExistingGateway(requestedPort, sourceHash);
 if (existingUrl) {
   console.log(`MowerBoy is already running: ${existingUrl}/host`);
   if (process.env.MOWERBOY_NO_OPEN !== "1") openBrowser(`${existingUrl}/host`);
@@ -28,8 +32,6 @@ const keyPath = process.env.MOWERBOY_KEY;
 const addresses = Object.values(networkInterfaces()).flat().filter((item) => item && !item.internal && (item.family === 4 || item.family === "IPv4")).map((item) => item.address);
 let phase = "preparing", detail = port === requestedPort ? "Checking MowerBoy…" : `Port ${requestedPort} is busy. Using ${port} instead…`, release = "";
 
-if (Number(process.versions.node.split(".")[0]) < 20) stop(`Node 20 or newer is required. Found ${process.version}.`);
-if (!existsSync(resolve(root, "package-lock.json"))) stop("package-lock.json is missing. Restore the MowerBoy folder and try again.");
 if (Boolean(certPath) !== Boolean(keyPath)) stop("Set both MOWERBOY_CERT and MOWERBOY_KEY, or neither.");
 const tls = certPath ? { cert: await readFile(resolve(certPath)), key: await readFile(resolve(keyPath)) } : null;
 const protocol = tls ? "https" : "http";
@@ -48,20 +50,25 @@ for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => server.clos
 
 async function prepare() {
   try {
-    if (!existsSync(resolve(root, "node_modules/vite/package.json"))) {
-      detail = "First-time setup. Installing the locked game files…";
+    const dependencyIdentity = await dependencyFingerprint();
+    let dependencyStamp;
+    try { dependencyStamp = JSON.parse(await readFile(dependencyStampPath, "utf8")); } catch { dependencyStamp = null; }
+    if (!existsSync(resolve(root, "node_modules/vite/package.json")) || dependencyStamp?.identity !== dependencyIdentity) {
+      detail = existsSync(resolve(root, "node_modules/vite/package.json"))
+        ? "Runtime or locked dependencies changed. Refreshing the game files…"
+        : "First-time setup. Installing the locked game files…";
       await run(process.platform === "win32" ? "npm.cmd" : "npm", ["ci"]);
+      await writeFile(dependencyStampPath, `${JSON.stringify({ identity: dependencyIdentity, installedAt: new Date().toISOString() }, null, 2)}\n`);
     }
     detail = "Checking for game updates…";
-    const sourceHash = await hashInputs();
     let stamp;
     try { stamp = JSON.parse(await readFile(stampPath, "utf8")); } catch { stamp = null; }
-    if (!existsSync(resolve(dist, "index.html")) || stamp?.sourceHash !== sourceHash) {
+    if (process.env.MOWERBOY_FORCE_BUILD === "1" || !existsSync(resolve(dist, "index.html")) || stamp?.sourceHash !== sourceHash) {
       detail = "Building the game. This can take a minute…";
       await run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"]);
       await writeFile(stampPath, `${JSON.stringify({ sourceHash, builtAt: new Date().toISOString() }, null, 2)}\n`);
     }
-    try { release = JSON.parse(await readFile(resolve(dist, "release-manifest.json"), "utf8")).release; } catch { release = sourceHash.slice(0, 16); }
+    try { release = JSON.parse(await readFile(resolve(dist, "release-manifest.json"), "utf8")).releaseId; } catch { release = sourceHash.slice(0, 16); }
     phase = "ready"; detail = "Ready to play";
   } catch (error) {
     phase = "error"; detail = error instanceof Error ? error.message : String(error);
@@ -70,8 +77,17 @@ async function prepare() {
 }
 
 async function respond(req, res) {
-  const url = new URL(req.url || "/", localUrl);
-  if (url.pathname === "/healthz") return json(res, phase === "error" ? 503 : 200, { app: "mowerboy", phase, detail, release, localUrl, lanUrls });
+  if (req.method !== "GET" && req.method !== "HEAD") { res.writeHead(405, { allow: "GET, HEAD" }); res.end(); return; }
+  let url;
+  let decodedPath;
+  try {
+    url = new URL(req.url || "/", localUrl);
+    decodedPath = decodeURIComponent((req.url || "/").split(/[?#]/, 1)[0]);
+  } catch { res.writeHead(400); res.end("Bad request"); return; }
+  if (decodedPath.includes("\\") || decodedPath.includes("\0") || decodedPath.split("/").some((part) => part === "." || part === "..")) {
+    res.writeHead(400); res.end("Bad request"); return;
+  }
+  if (url.pathname === "/healthz") return json(res, phase === "ready" ? 200 : 503, { app: "mowerboy", phase, detail, release, sourceHash, localUrl, lanUrls });
   if (url.pathname === "/host") return html(res, dashboard());
   if (url.pathname === "/host/qr.svg") {
     const target = lanUrls[0] || localUrl;
@@ -80,15 +96,24 @@ async function respond(req, res) {
     return;
   }
   if (phase !== "ready") { res.writeHead(302, { location: "/host" }); res.end(); return; }
-  let requested = decodeURIComponent(url.pathname).replace(/^\/+/, "") || "index.html";
+  let requested = url.pathname.replace(/^\/+/, "") || "index.html";
   let path = resolve(dist, requested);
   const fromRoot = relative(dist, path);
-  if (fromRoot.startsWith("..") || resolve(fromRoot) === fromRoot) { res.writeHead(403); res.end("Forbidden"); return; }
-  try { if ((await stat(path)).isDirectory()) path = resolve(dist, "index.html"); }
-  catch { path = resolve(dist, "index.html"); }
+  if (fromRoot.startsWith("..") || resolve(fromRoot) === fromRoot) { res.writeHead(400); res.end("Bad request"); return; }
+  const navigation = (req.headers.accept || "").includes("text/html") && extname(requested) === "";
+  try {
+    if ((await stat(path)).isDirectory()) {
+      if (!navigation) { res.writeHead(404); res.end("Not found"); return; }
+      path = resolve(dist, "index.html");
+    }
+  } catch {
+    if (navigation) path = resolve(dist, "index.html");
+    else { res.writeHead(404); res.end("Not found"); return; }
+  }
   try {
     const body = await readFile(path), immutable = /\.[a-f0-9]{8,}\.(?:js|css)$/.test(path);
-    res.writeHead(200, { "content-type": mime(extname(path)), "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache", "x-content-type-options": "nosniff" }); res.end(body);
+    res.writeHead(200, { "content-type": mime(extname(path)), "content-length": body.byteLength, "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache", "x-content-type-options": "nosniff" });
+    res.end(req.method === "HEAD" ? undefined : body);
   } catch { res.writeHead(404); res.end("Not found"); }
 }
 
@@ -107,18 +132,20 @@ function qrSvg(value) {
   let cells = ""; for (let y=0;y<count;y++) for(let x=0;x<count;x++) if(qr.isDark(y,x)) cells += `<rect x="${x+quiet}" y="${y+quiet}" width="1" height="1"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="white"/><g fill="#102418">${cells}</g></svg>`;
 }
-async function hashInputs(){const hash=createHash("sha256"),items=["src","public","index.html","package.json","package-lock.json","tsconfig.json","vite.config.ts"];const files=[];for(const item of items){const path=resolve(root,item);if(existsSync(path))files.push(...await collect(path));}for(const path of files.sort()){hash.update(relative(root,path));hash.update(await readFile(path));}return hash.digest("hex");}
+async function hashInputs(){const hash=createHash("sha256"),items=["src","public","scripts","index.html","package.json","package-lock.json","tsconfig.json","vite.config.ts","playwright.config.ts"];const files=[];for(const item of items){const path=resolve(root,item);if(existsSync(path))files.push(...await collect(path));}for(const path of files.sort()){hash.update(relative(root,path));hash.update(await readFile(path));}return hash.digest("hex");}
+async function dependencyFingerprint(){const hash=createHash("sha256");hash.update(await readFile(resolve(root,"package-lock.json")));hash.update(`\nnode=${process.versions.node}\nmodules=${process.versions.modules}\nplatform=${process.platform}\narch=${process.arch}`);return hash.digest("hex");}
 async function collect(path){const info=await stat(path);if(info.isFile())return[path];const out=[];for(const entry of await readdir(path))out.push(...await collect(resolve(path,entry)));return out;}
 function run(command,args){return new Promise((ok,bad)=>{const child=spawn(command,args,{cwd:root,stdio:"inherit",shell:process.platform==="win32"});child.on("error",bad);child.on("exit",code=>code===0?ok():bad(new Error(`Setup stopped with code ${code}.`)));});}
 function openBrowser(url){const spec=process.platform==="win32"?["cmd.exe",["/d","/s","/c","start","",url]]:process.platform==="darwin"?["open",[url]]:["xdg-open",[url]];const child=spawn(spec[0],spec[1],{detached:true,stdio:"ignore"});child.unref();}
 function json(res,status,value){res.writeHead(status,{"content-type":"application/json","cache-control":"no-store"});res.end(JSON.stringify(value));}
 function html(res,value){res.writeHead(200,{"content-type":"text/html; charset=utf-8","cache-control":"no-store"});res.end(value);}
 function validPort(value){const port=Number(value);if(!Number.isInteger(port)||port<1||port>65535)stop("PORT must be a number from 1 to 65535.");return port;}
-async function findExistingGateway(start){const probes=[];for(let port=start;port<start+20&&port<=65535;port++)probes.push((async()=>{try{const response=await fetch(`http://127.0.0.1:${port}/healthz`,{signal:AbortSignal.timeout(350)});const state=await response.json();return state.app==="mowerboy"&&typeof state.localUrl==="string"?state.localUrl:null;}catch{return null;}})());return(await Promise.all(probes)).find(Boolean)||null;}
+async function findExistingGateway(start,expectedSourceHash){const probes=[];for(let port=start;port<start+20&&port<=65535;port++)probes.push((async()=>{try{const response=await fetch(`http://127.0.0.1:${port}/healthz`,{signal:AbortSignal.timeout(350)});const state=await response.json();return state.app==="mowerboy"&&state.phase==="ready"&&state.sourceHash===expectedSourceHash&&typeof state.localUrl==="string"?state.localUrl:null;}catch{return null;}})());return(await Promise.all(probes)).find(Boolean)||null;}
 async function requireAvailablePort(port,address){if(await portAvailable(port,address))return port;stop(`Port ${port} is already in use. Choose another PORT or close the other local server.`);}
 async function firstAvailablePort(start,address){for(let candidate=start;candidate<start+20&&candidate<=65535;candidate++){if(await portAvailable(candidate,address))return candidate;}stop(`Ports ${start}-${Math.min(start+19,65535)} are already in use. Close another local server and try again.`);}
 async function portAvailable(port,address){const loopbackFree=address!=="0.0.0.0"||await canListen(port,"127.0.0.1");return loopbackFree&&await canListen(port,address);}
 function canListen(port,address){return new Promise((resolveAvailable)=>{const probe=createProbeServer();probe.unref();probe.once("error",()=>resolveAvailable(false));probe.listen(port,address,()=>probe.close(()=>resolveAvailable(true)));});}
-function mime(ext){return ({".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".json":"application/json; charset=utf-8",".webmanifest":"application/manifest+json",".png":"image/png",".jpg":"image/jpeg",".svg":"image/svg+xml",".map":"application/json"})[ext]||"application/octet-stream";}
+function mime(ext){return ({".html":"text/html; charset=utf-8",".js":"text/javascript; charset=utf-8",".css":"text/css; charset=utf-8",".json":"application/json; charset=utf-8",".webmanifest":"application/manifest+json",".png":"image/png",".jpg":"image/jpeg",".webp":"image/webp",".svg":"image/svg+xml",".map":"application/json"})[ext]||"application/octet-stream";}
 function escapeHtml(value){return value.replace(/[&<>"']/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[char]);}
+function supportedNode(value){const [major,minor,patch]=value.split(".").map(Number);return major>22||(major===22&&(minor>12||(minor===12&&patch>=0)))||(major===20&&(minor>19||(minor===19&&patch>=0)));}
 function stop(message){console.error(`MowerBoy could not start: ${message}`);process.exit(1);}

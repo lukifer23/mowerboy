@@ -20,6 +20,7 @@ for (const relative of required) {
     if (relative.endsWith(".png") && !isPng(data)) failures.push(`${relative}: invalid PNG signature or dimensions`);
     if (relative.includes("/environment/") || relative.includes("/vacuums/") || relative.includes("/mowers/")) failures.push(...validateTransparentBounds(data, relative));
     if (relative.endsWith(".jpg") && !isJpeg(data)) failures.push(`${relative}: invalid JPEG signature`);
+    if (relative.endsWith(".webp") && !isWebp(data)) failures.push(`${relative}: invalid WebP signature`);
   } catch (error) {
     failures.push(`${relative}: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -48,6 +49,12 @@ function isPng(data) {
 
 function isJpeg(data) {
   return data.length >= 4 && data[0] === 0xff && data[1] === 0xd8 && data[data.length - 2] === 0xff && data[data.length - 1] === 0xd9;
+}
+
+function isWebp(data) {
+  return data.length >= 12
+    && data.subarray(0, 4).toString("ascii") === "RIFF"
+    && data.subarray(8, 12).toString("ascii") === "WEBP";
 }
 
 function validateTransparentBounds(data, relative) {

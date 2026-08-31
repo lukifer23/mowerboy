@@ -47,7 +47,7 @@ export function buildRoom(scene: Phaser.Scene, room: RoomDef): RoomLayout {
     image.setData("prop", p);
     return image;
   });
-  const rug = room.floors.includes("rug") ? rugRect(room) : null;
+  const rug = room.floors.includes("rug") ? roomRugRect(room) : null;
   return {
     width: room.width,
     height: room.height,
@@ -69,7 +69,7 @@ export function safeDebrisPoint(obstacles: RoomProp[], x: number, y: number): bo
   return obstacles.every((p) => !containsObstaclePoint({ ...p, collisionW: p.width + 70, collisionH: p.height + 70 }, x, y));
 }
 
-function rugRect(room: RoomDef) {
+export function roomRugRect(room: RoomDef) {
   return { x: room.width * 0.28, y: room.height * 0.27, w: room.width * 0.46, h: room.height * 0.48 };
 }
 
@@ -101,7 +101,7 @@ function paintFloor(ctx: CanvasRenderingContext2D, room: RoomDef): void {
     ctx.globalAlpha = 1;
   }
   if (room.floors.includes("rug")) {
-    const r = rugRect(room);
+    const r = roomRugRect(room);
     ctx.fillStyle = COLORS.rug[0]; ctx.fillRect(r.x, r.y, r.w, r.h);
     ctx.strokeStyle = COLORS.rug[1]; ctx.lineWidth = 18; ctx.strokeRect(r.x + 9, r.y + 9, r.w - 18, r.h - 18);
     ctx.strokeStyle = COLORS.rug[2]; ctx.lineWidth = 5;
@@ -119,7 +119,7 @@ function paintFloor(ctx: CanvasRenderingContext2D, room: RoomDef): void {
   ctx.fillStyle="#7a563d";ctx.fillRect(room.width*.1-70,room.height-61,140,24);ctx.fillStyle="#d8bd91";ctx.fillRect(room.width*.1-58,room.height-58,116,18);
 }
 
-function authoredFurniture(room: RoomDef): RoomProp[] {
+export function authoredFurniture(room: RoomDef): RoomProp[] {
   const w = room.width, h = room.height;
   const add = (kind: FurnitureKind, x: number, y: number, width: number, height: number, rotation = 0): RoomProp => ({ kind, x, y, width, height, collisionW: width * 0.88, collisionH: height * 0.82, r: Math.min(width, height) * 0.42, rotation, shape: kind === "plant" ? "circle" : kind === "table" ? "ellipse" : "rect" });
   switch (room.id) {

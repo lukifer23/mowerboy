@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "A gentle, touch-first mowing and vacuuming game. One finger. No fail.",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
     "start": "node scripts/gateway.mjs",
     "dev": "node scripts/sync-asset-catalog.mjs && vite --host 0.0.0.0 --port 5173",
@@ -15,10 +18,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:gateway": "node scripts/gateway-smoke.mjs",
+    "test:sw-upgrade": "node --test scripts/sw-upgrade.test.mjs",
     "test:offline": "node scripts/offline-check.mjs",
     "test:soak": "node scripts/soak.mjs",
+    "test:visual": "node scripts/visual-review.mjs",
     "test:fold": "node scripts/fold-check.mjs",
-    "verify": "npm run build && npm test && npm run test:e2e && npm run test:offline"
+    "verify": "npm run build && npm test && npm run test:gateway && npm run test:sw-upgrade && npm run test:e2e && npm run test:offline"
   },
   "dependencies": {
     "phaser": "^3.87.0"

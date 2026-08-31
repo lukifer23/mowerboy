@@ -9,14 +9,16 @@ This is the evidence ledger for the web/touch release pass. A green automated ch
 | Gate | Result |
 |---|---|
 | TypeScript | `npx tsc --noEmit` passes |
-| Deterministic verification | Three consecutive clean `npm run verify` runs on 2026-08-30 |
-| Unit/content | 85 Vitest tests pass in 10 files |
-| Browser touch/content | 42 checks pass in installed Chrome; 48 intentional project skips keep heavyweight matrices single-run; includes two simultaneous cold clients |
-| Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 17.24 MiB; the complete 70-file release is 18.97 MiB |
-| Production offline | Fingerprinted JS/CSS plus all 59 assets cache from the generated release manifest; with networking disabled, Tractor Field/Field Giant and Community Hall/Floor Rider reopen with production art |
-| Windows shortcut | Installed `.lnk` metadata and custom icon validate; its exact hidden-launch target reached Ready, dashboard, QR, and game HTTP 200 while preserving a conflicting BidLens listener on 5173 and selecting LAN port 5174; a repeat launch reused the same listener/process |
+| Deterministic verification | Full `npm run verify` passes on the final 2026-08-30 change set: build, 93 unit, gateway, worker upgrade, 47 browser, and offline gates |
+| Unit/content | 93 Vitest tests pass in 12 files, including swept movement, incremental growth, and material-aware audio |
+| Browser touch/content | 47 checks pass in installed Chrome; 68 intentional project skips keep heavyweight matrices single-run; includes two simultaneous cold clients, exact resize control counts, room/pad controls, Safe Home announcements, tutorial relayout, and normal/Calm Motion |
+| Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 15.46 MiB; release `b990107e3baba648` contains 67 files at 16.79 MiB |
+| Service-worker upgrade | Real worker code passes deterministic V1→V2 promotion, optional-pack quota isolation, interrupted/corrupt staging, rollback, third-release pruning, integrity inventory, and active-only fetch tests |
+| Production offline | Exact active `ReleaseManifestV2` URLs, lengths, hashes, and integrity headers validate; with networking disabled, Tractor Field/Field Giant and Community Hall/Floor Rider reopen with production art |
+| Windows shortcut | Freshly reinstalled Desktop `.lnk` targets hidden `wscript.exe` → `scripts/windows-launch.vbs` with the project working directory and custom icon. A cold launch reached current release `b990107e3baba648` on 5173 with matching source/build fingerprints; dashboard, QR SVG, and game returned 200 and both detected LAN URLs were exposed. A repeat launch reused the same process with exactly one MowerBoy listener. |
 | Dependency audit | 0 known vulnerabilities after Vite 8.2.2 / Vitest 4.1.11 upgrade |
-| Soak | 308.1 seconds of active page time, 35 Mow/Vacuum cycles, 70 activity starts, 0 console errors |
+| Soak | Current run: 301.0 seconds, 33 Mow/Vacuum cycles, 66 measured activity starts after warm-up, 0 errors, +0.9 MiB post-GC heap, max p95 8.34 ms, worst 11.14 ms, stable resources |
+| Gameplay-scale visual inventory | 54 current captures cover all 14 mowers, 20 yards, 8 vacuums, and 12 rooms at 832×749 with expected production texture and valid fresh simulation state |
 
 Playwright viewports:
 
@@ -55,7 +57,7 @@ Mow -> held moving touch -> release -> Safe Home twice
 Vacuum -> held moving touch -> release -> Safe Home twice
 ```
 
-The final animated run lasted 308.1 seconds of active page time. Heap sampled between cycles ranged from 10.7 to 38.2 MiB and finished at 26.1 MiB, with repeated garbage-collection drops rather than cumulative growth. Every one of the 70 activity starts produced real machine movement. Console/page errors: 0. The harness uses the game page's monotonic clock and bounded polling, so macOS sleep or wall-clock corrections cannot counterfeit duration or scene timeouts.
+The current animated run lasted 301.0 seconds after a real two-activity warm-up. It completed 33 measured cycles / 66 activity starts; every activity moved, transformed its surface, and gently stopped after release. Post-GC heap stayed between 8.0 and 9.0 MiB (+0.9 MiB), maximum p95 frame time was 8.34 ms, worst frame was 11.14 ms, and per-activity camera/texture/listener counts were stable. Console/page errors: 0. The harness uses the game page's monotonic clock, bounded scene waits, explicit budgets, and unconditional browser cleanup/reporting.
 
 ## Evidence intentionally rejected
 
@@ -67,7 +69,7 @@ The final animated run lasted 308.1 seconds of active page time. Heap sampled be
 - Controlled listening across every mower/vacuum family and interaction material
 - Thirty-minute alternating-activity soak on the physical Fold
 - Trusted-local HTTPS setup if Android installable-PWA behavior is required; plain LAN HTTP fullscreen is already verified
-- Human double-click/firewall acceptance of the Windows desktop shortcut; the production gateway, health endpoint, dashboard, LAN URL, and QR endpoint pass automated Windows smoke testing
+- Human firewall/tablet acceptance of the Windows desktop shortcut; installation metadata, hidden target chain, cold/repeat launches, current-build fingerprinting, gateway health, dashboard, LAN URLs, QR, and game responses pass on the current Windows host
 - macOS launcher/host validation
 - VoiceOver on iPad and TalkBack on the physical Fold
 - Parent and child acceptance

@@ -1,6 +1,8 @@
 import type Phaser from "phaser";
-import { MOWERS } from "../data/mowers";
-import { VACUUMS } from "../data/vacuums";
+import { MOWERS, mowerById } from "../data/mowers";
+import { VACUUMS, vacuumById } from "../data/vacuums";
+import { makeMowerCanvas } from "./drawMower";
+import { makeVacuumCanvas } from "./drawVacuum";
 import catalog from "../data/asset-manifest.json";
 
 export interface LoadOverlay {
@@ -55,8 +57,8 @@ export function showLoadOverlay(scene: Phaser.Scene, label = "Getting ready"): L
 const catalogUrls = [...catalog.core, ...catalog.mow, ...catalog.vacuum];
 const idsIn = (folder: string, extension: string) => new Set(catalogUrls.filter((url) => url.includes(`/assets/${folder}/`) && url.endsWith(extension)).map((url) => url.split("/").at(-1)!.replace(extension, "")));
 export const ILLUSTRATED_MOWERS = idsIn("mowers", ".png");
-const MOWER_PORTRAITS = new Set(MOWERS.filter((mower) => catalogUrls.includes(`./assets/portraits/${mower.id}.jpg`)).map((mower) => mower.id));
-const VACUUM_PORTRAITS = new Set(VACUUMS.filter((vacuum) => catalogUrls.includes(`./assets/portraits/${vacuum.id}.jpg`)).map((vacuum) => vacuum.id));
+const MOWER_PORTRAITS = new Set(MOWERS.filter((mower) => catalogUrls.includes(`./assets/portraits/${mower.id}.webp`)).map((mower) => mower.id));
+const VACUUM_PORTRAITS = new Set(VACUUMS.filter((vacuum) => catalogUrls.includes(`./assets/portraits/${vacuum.id}.webp`)).map((vacuum) => vacuum.id));
 
 const WORLD_ASSETS = [
   ["grass-detail", "assets/grass-lush-v2.png"], ["grass-cut-detail", "assets/grass-cut-v2.png"],
@@ -79,7 +81,7 @@ export function queueMowingWorldAssets(scene: Phaser.Scene): void {
 export function queueMowerAsset(scene: Phaser.Scene, id: string, portrait = false): void {
   if (!ILLUSTRATED_MOWERS.has(id)) return;
   image(scene, `mower-world-${id}`, `assets/mowers/${id}.png`);
-  if (portrait && MOWER_PORTRAITS.has(id)) image(scene, `portrait-${id}`, `assets/portraits/${id}.jpg`);
+  if (portrait && MOWER_PORTRAITS.has(id)) image(scene, `portrait-${id}`, `assets/portraits/${id}.webp`);
 }
 
 export function queueMowerGalleryAssets(scene: Phaser.Scene): void {
@@ -88,9 +90,21 @@ export function queueMowerGalleryAssets(scene: Phaser.Scene): void {
 
 export function queueVacuumAsset(scene: Phaser.Scene, id: string, portrait = false): void {
   if (VACUUMS.some((vacuum) => vacuum.id === id)) image(scene, `vacuum-world-${id}`, `assets/vacuums/${id}.png`);
-  if (portrait && VACUUM_PORTRAITS.has(id)) image(scene, `vacuum-portrait-${id}`, `assets/portraits/${id}.jpg`);
+  if (portrait && VACUUM_PORTRAITS.has(id)) image(scene, `vacuum-portrait-${id}`, `assets/portraits/${id}.webp`);
 }
 
 export function queueVacuumGalleryAssets(scene: Phaser.Scene): void {
   for (const vacuum of VACUUMS) queueVacuumAsset(scene, vacuum.id, true);
+}
+
+export function ensureMowerFallbackTexture(scene: Phaser.Scene, id: string): string {
+  const key = `mower-card-${id}`;
+  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, makeMowerCanvas(mowerById(id), 0.2, 0.5));
+  return key;
+}
+
+export function ensureVacuumFallbackTexture(scene: Phaser.Scene, id: string): string {
+  const key = `vacuum-card-${id}`;
+  if (!scene.textures.exists(key)) scene.textures.addCanvas(key, makeVacuumCanvas(vacuumById(id)));
+  return key;
 }

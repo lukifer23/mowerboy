@@ -45,12 +45,22 @@ describe("grassMath", () => {
     const height = new Uint8Array(50).fill(HEIGHT_CUT);
     const rng = mulberry32(42);
     const grown = growRandom(height, 10, rng);
-    expect(grown).toBeGreaterThan(0);
+    expect(grown.grown).toBeGreaterThan(0);
+    expect(grown.indices.length).toBeGreaterThan(0);
     expect(height.some((h) => h > HEIGHT_CUT)).toBe(true);
     const rng2 = mulberry32(42);
     const height2 = new Uint8Array(50).fill(HEIGHT_CUT);
     growRandom(height2, 10, rng2);
     expect(Array.from(height2)).toEqual(Array.from(height));
+  });
+
+  it("reports unique changed cells and exact cut-to-growing transitions", () => {
+    const height = new Uint8Array([HEIGHT_CUT, 1, 255]);
+    const sequence = [0, 0, .4, .4, .8, .8];
+    const result = growRandom(height, 4, () => sequence.shift() ?? .8, HEIGHT_TALL);
+    expect(result.indices).toEqual([0, 1]);
+    expect(result.becameUncut).toBe(1);
+    expect(result.grown).toBe(4);
   });
 
   it("cuts helper slices incrementally without touching void cells", () => {

@@ -6,7 +6,7 @@ Remote: `https://github.com/lukifer23/mowerboy.git`
 
 ## Current state
 
-The engineering, hosting, continuity, accessibility, and first visual-feedback slices of the perfection pass are implemented:
+The engineering, hosting, continuity, accessibility, performance, and visual-feedback hardening slices are implemented:
 
 - interrupted touch/pad input clears safely in Mow and Vacuum
 - camera zoom is stable and speed-independent
@@ -17,19 +17,28 @@ The engineering, hosting, continuity, accessibility, and first visual-feedback s
 - Save v5 resumes the exact authored yard or generated-yard seed and selected room
 - a production gateway serves the built game, health status, LAN URLs, and a scannable QR dashboard; Windows has a hidden launcher and desktop-shortcut installer
 - all 22 machine portraits now use production art, and one canonical asset catalog drives validation, runtime selection, offline packs, and release manifests
+- movement resolves collision/bounds before grass or debris transformation, including swept high-speed collision tests
+- Free Mow growth repaints changed cells incrementally; machine/prop recovery textures are created only after real load failure
+- Mow and Vacuum share pad/tutorial/pause/Safe Home/celebration safety behavior while retaining separate simulations
+- accessibility mirrors are scene-owned and resize-safe; every room and pad direction is keyboard accessible; Safe Home announces without moving focus
+- `ReleaseManifestV2` verifies byte length/SHA-256, stages activity packs independently, promotes atomically, supports rollback, and serves only the active release
+- all runtime portraits are reviewed WebP assets; source/reference JPEGs remain under `source-art/` outside the shipped cache
 
 The repository was intentionally rewritten to a sanitized root before this handoff. Do not restore old local commit objects or publish old archives.
 
 ## Last verified evidence
 
+- full `npm run verify`: pass on the final 2026-08-30 change set
 - `npx tsc --noEmit`: pass
-- three consecutive `npm run verify` runs: pass
-- `npm test -- --run`: 85/85 pass
-- browser: 42 pass, 48 intentional matrix skips
-- production assets: 59 files, 17.24 MiB; complete generated release: 70 files, 18.97 MiB
-- stable chunks: Phaser 1,197 KiB and game 180 KiB before compression
-- production-offline replay: all 59 manifest assets plus exact Field Giant/Floor Rider art pass
-- installed Windows shortcut target-chain smoke: custom icon/metadata, hidden launch, automatic 5173-conflict fallback, readiness, dashboard, QR SVG, game shell, and LAN binding pass without disturbing the other listener
+- `npm test`: 93/93 pass in 12 files
+- browser: 47 pass, 68 intentional matrix skips
+- service-worker upgrades: 2 suites pass, including promotion/failure/rollback/pruning/active-only fetch scenarios
+- production assets: 59 files, 15.46 MiB; generated release `b990107e3baba648`: 67 files, 16.79 MiB
+- JavaScript: 1,354.6 KiB before compression
+- production-offline replay: exact active URL/hash inventory plus Field Giant/Floor Rider art pass
+- current animated soak: 301.0 seconds, 33 cycles / 66 measured starts, 0 errors, +0.9 MiB post-GC heap, max p95 8.34 ms, worst 11.14 ms, stable per-activity resources
+- current gameplay-scale visual inventory: 54/54 expected production scenes captured and reviewed
+- current Windows Desktop shortcut: reinstalled with correct hidden target chain, project working directory, description, and custom icon; cold launch reached release `b990107e3baba648` on 5173 with matching source/build fingerprints, dashboard/QR/game HTTP 200, and two LAN URLs; repeat launch reused the same process with one listener
 
 The automated release baseline is green, but physical Fold/iPad, assistive-technology, controlled-listening, human Windows shortcut/firewall, macOS host, parent, and child acceptance remain separate external gates. Do not write “perfect” or “release-ready” until those gates pass.
 
@@ -38,19 +47,18 @@ The automated release baseline is green, but physical Fold/iPad, assistive-techn
 ```bash
 git clone https://github.com/lukifer23/mowerboy.git
 cd mowerboy
-npm install
+npm ci
 npm test
 npm run build
 ```
 
 Then continue in this order:
 
-1. Generate real-scene previews for all 20 yards and 12 rooms from the production renderers.
-2. Complete the responsive screenshot review and final visual tuning across the specified matrix.
-3. Run the 30-minute physical alternating-activity soak and controlled listening matrix.
-4. Validate the one-click family flow on a clean Windows host and macOS host, including firewall/port diagnostics and real QR connection.
-5. Run VoiceOver on iPad and TalkBack plus folded/orientation checks on the physical Fold.
-6. Record parent/child acceptance, then update release language only from that evidence.
+1. Complete the remaining physical responsive review: Fold closed and both real orientations.
+2. Run the 30-minute physical alternating-activity soak and controlled listening matrix.
+3. Validate the one-click family flow on a clean Windows host and macOS host, including firewall/port diagnostics and real QR connection.
+4. Run VoiceOver on iPad and TalkBack on the physical Fold.
+5. Record parent/child acceptance, then update release language only from that evidence.
 
 Do not begin the four-place expansion until the current inventory and staged usage pilot pass. Do not invent expansion themes without evidence.
 
