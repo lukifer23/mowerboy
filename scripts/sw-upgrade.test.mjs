@@ -108,7 +108,7 @@ test("fetch reads the active release only and never falls through to previous or
     "active query-string navigation must not consult the network",
   );
 
-  const activeResponse = await harness.dispatchFetch("./mow.png");
+  const activeResponse = await harness.dispatchFetch("./mow.png", { headers: { Origin: origin } });
   assert.equal(await activeResponse.text(), "active:mow");
 
   const previousCore = await harness.cache(`mowerboy-release-${v1.releaseId}-core`);
@@ -147,7 +147,7 @@ function createHarness() {
       network.set(new URL("./release-manifest.json", origin).href, jsonResponse(manifest));
       for (const pack of ["core", "mow", "vacuum"]) {
         for (const entry of manifest.packs[pack]) {
-          network.set(new URL(entry.path, origin).href, new Response(manifest.bodies[entry.path], { headers: { "content-type": mime(entry.path) } }));
+          network.set(new URL(entry.path, origin).href, new Response(manifest.bodies[entry.path], { headers: { "content-type": mime(entry.path), vary: "Origin" } }));
         }
       }
     },
@@ -172,7 +172,7 @@ function createHarness() {
       listeners.get("fetch")({
         request: options.mode === "navigate"
           ? { url, method: "GET", mode: "navigate" }
-          : new Request(url),
+          : new Request(url, { headers: options.headers }),
         respondWith(value) { responsePromise = Promise.resolve(value); },
       });
       assert.ok(responsePromise, "fetch handler did not respond");
@@ -250,14 +250,17 @@ class MockCache {
   async put(input, response) {
     const url = requestUrl(input);
     this.owner.beforePut?.(this.name, url);
-    this.entries.set(url, response.clone());
+    this.entries.set(url, { request: toRequest(input), response: response.clone() });
   }
   async match(input, options = {}) {
     const requested = new URL(requestUrl(input));
-    for (const [url, response] of this.entries) {
+    const request = toRequest(input);
+    for (const [url, entry] of this.entries) {
       const candidate = new URL(url);
       if (options.ignoreSearch) { requested.search = ""; candidate.search = ""; }
-      if (candidate.href === requested.href) return response.clone();
+      if (candidate.href !== requested.href) continue;
+      if (!options.ignoreVary && varyDiffers(entry.request, request, entry.response)) continue;
+      return entry.response.clone();
     }
     return undefined;
   }
@@ -302,6 +305,16 @@ function requestUrl(input) {
   if (input instanceof URL) return input.href;
   if (input && typeof input === "object" && typeof input.url === "string") return input.url;
   return new URL(String(input), origin).href;
+}
+function toRequest(input) {
+  if (input instanceof Request) return input.clone();
+  return new Request(requestUrl(input));
+}
+function varyDiffers(storedRequest, incomingRequest, response) {
+  const vary = response.headers.get("vary");
+  if (!vary) return false;
+  if (vary.trim() === "*") return true;
+  return vary.split(",").some((name) => storedRequest.headers.get(name.trim()) !== incomingRequest.headers.get(name.trim()));
 }
 function jsonResponse(value) { return new Response(JSON.stringify(value), { headers: { "content-type": "application/json" } }); }
 function mime(path) { return path.endsWith(".html") ? "text/html" : path.endsWith(".js") ? "text/javascript" : "application/octet-stream"; }

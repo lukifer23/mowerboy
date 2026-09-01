@@ -105,7 +105,12 @@ async function fetchFromActiveRelease(request) {
   if (state.activeReleaseId) {
     for (const pack of state.activePacks ?? []) {
       const cache = await caches.open(releaseCacheName(state.activeReleaseId, pack));
-      const hit = await cache.match(request, { ignoreSearch: false });
+      // Release entries are selected by an exact, fingerprinted URL and have
+      // already passed byte-length and SHA-256 verification. Hosting-layer
+      // `Vary` headers (notably `Vary: Origin`) must not turn a verified asset
+      // into a cache miss when the browser's runtime request headers differ
+      // from the URL-only request used by cache.put().
+      const hit = await cache.match(request, { ignoreSearch: false, ignoreVary: true });
       if (hit) return hit;
     }
     // Every SPA navigation belongs to the promoted release, including routes
