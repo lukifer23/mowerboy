@@ -1,6 +1,6 @@
 # Current handoff
 
-Updated: 2026-08-30  
+Updated: 2026-09-01
 Branch: `main` only  
 Remote: `https://github.com/lukifer23/mowerboy.git`
 
@@ -28,19 +28,9 @@ The repository was intentionally rewritten to a sanitized root before this hando
 
 ## Last verified evidence
 
-- full `npm run verify`: pass on the final 2026-08-30 change set
-- `npx tsc --noEmit`: pass
-- `npm test`: 93/93 pass in 12 files
-- browser: 47 pass, 68 intentional matrix skips
-- service-worker upgrades: 2 suites pass, including promotion/failure/rollback/pruning/active-only fetch scenarios
-- production assets: 59 files, 15.46 MiB; generated release `07aedf4635513a4f`: 67 files, 16.79 MiB
-- JavaScript: 1,354.6 KiB before compression
-- production-offline replay: exact active URL/hash inventory plus Field Giant/Floor Rider art pass
-- current animated soak: 301.0 seconds, 33 cycles / 66 measured starts, 0 errors, +0.9 MiB post-GC heap, max p95 8.34 ms, worst 11.14 ms, stable per-activity resources
-- current gameplay-scale visual inventory: 54/54 expected production scenes captured and reviewed
-- current Windows Desktop shortcut: reinstalled with correct hidden target chain, project working directory, description, and custom icon; cold launch reached the current release on 5173 with matching source/build fingerprints, dashboard/QR/game HTTP 200, and two LAN URLs; repeat launch reused the same process with one listener
+Exact suite counts, release ID/size, soak metrics, host evidence, and remaining gaps are canonical in [`QA.md`](QA.md). Keep volatile evidence there so the handoff, roadmap, and QA ledger cannot drift independently.
 
-The automated release baseline is green, but physical Fold/iPad, assistive-technology, controlled-listening, human Windows shortcut/firewall, macOS host, parent, and child acceptance remain separate external gates. Do not write “perfect” or “release-ready” until those gates pass.
+The local automated release baseline is green; remote CI for the committed change set must also pass. Physical Fold/iPad, assistive-technology, controlled-listening, human Windows shortcut/firewall, macOS host, parent, and child acceptance remain separate external gates. Do not write “perfect” or “release-ready” until those gates pass.
 
 ## Resume
 

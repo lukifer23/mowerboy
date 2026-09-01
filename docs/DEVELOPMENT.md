@@ -28,15 +28,11 @@ boot → title
          └─ settings
 ```
 
-`BootScene` always generates procedural HUD icons and complete recovery machine cards, then loads only:
+`BootScene` generates procedural HUD icons, loads the title/icon plus the selected mower and vacuum world art and portraits, and does not eagerly render the full fallback roster.
 
-- `assets/title.jpg`
-- `assets/icon.png`
-- the currently selected mower and vacuum world images
+`AssetCatalog.ts` owns activity-scoped loading and creates machine-card fallbacks lazily only when production art is absent. `PlayScene` queues mowing terrain/prop art plus the selected mower, `VacuumPlayScene` queues the selected vacuum, each garage queues its own gallery, and `spawnProps` creates procedural prop textures on demand. This keeps Vacuum art out of mowing startup and avoids the former all-assets-at-boot transfer.
 
-`AssetCatalog.ts` owns activity-scoped loading. `PlayScene` queues mowing terrain/prop art plus the selected mower, `VacuumPlayScene` queues the selected vacuum, and each garage queues its own gallery. This keeps Vacuum art out of mowing startup and avoids the former all-assets-at-boot transfer.
-
-Every activity and gallery shows a visible loading overlay. Failed raster loads are recorded and select the complete procedural machine renderer rather than leaving a blank canvas; the recovery state is exposed only through parent/test diagnostics.
+Boot and both activity scenes show a visible loading overlay and collect load-error keys. Galleries queue their production rosters before `create`, detect absent textures, and select the complete procedural machine renderer rather than leaving a blank canvas. A machine's production/fallback `assetMode` is exposed through read-only test diagnostics.
 
 ## PlayScene (the important one)
 
@@ -61,10 +57,10 @@ Owns the session: layout → grass texture → props → mower → magnet drive 
 Each frame (unless paused / tutorial / celebration):
 
 1. `TouchDrive.update`
-2. Shape-aware gentle collision vs props (slide, never hard-stop)
-3. Clamp to world
-4. `Mower.update` (move + repaint wheels)
-5. `GrassField.cutMower` with deck size (wide powerup) and mulch flag
+2. `Mower.step` computes a pure candidate pose
+3. `resolveDrivePose` sweeps that pose through shaped obstacles and world bounds
+4. `Mower.commitPose` commits only the resolved pose and repaints mechanics
+5. `GrassField.cutMower` transforms grass only at the committed pose
 6. Optional helper sweep / flock nibble
 7. Audio throttle + cut intensity
 8. Clipping particles (skipped if `reducedMotion`)
@@ -94,7 +90,7 @@ Logical grass cell size: `CELL = 7`; authored-map scale: `MAP_SCALE = 21` in `La
 
 `src/data/mowers.ts` — fourteen `MowerDef`s. Every machine is immediately available.
 
-In-world art uses transparent top-down production illustrations plus runtime mechanical overlays; `drawMower.ts` remains the complete generated fallback. Rotation stays consistent for both paths. Machine families include `push`, `riding`, `zeroturn`, `tractor`, and `commercial`.
+In-world art uses transparent top-down production illustrations plus runtime mechanical overlays; `drawMower.ts` remains the complete generated fallback. Rotation stays consistent for both paths. Machine families include `push`, `riding`, `zeroturn`, `tractor`, `commercial`, `standon`, and `frontmount`.
 
 Handling that actually changes feel: `topSpeed`, `accel`, `brake`, `turnRate`, `deckWidth`, `deckLength`, `deckOffset`. Engine feel: `idleHz`, `maxHz`, `rumble`, `cylinders`.
 
@@ -257,6 +253,9 @@ npm test
 | `src/data/vacuums.test.ts` | 8 always-open vacuums, complete rigs, 12 rooms, all floor types |
 | `src/systems/TouchDrive.test.ts` | shortest-turn and assisted touch throttle behavior |
 | `src/systems/Viewport.test.ts` | phone, Fold browser/fullscreen/cover CSS sizes, tablet, safe insets, HUD separation |
+| `src/systems/driveMath.test.ts` | pure pose stepping, swept collision, thin/rotated obstacles, and world bounds |
+| `src/systems/AudioEngine.test.ts` | profile gain and five floor-material acoustic mappings |
+| `src/data/levels.test.ts` | authored/generated map shape, alphabet, enclosure, and start invariants |
 
 `npx tsc --noEmit` is part of `npm run build`.
 
@@ -267,7 +266,9 @@ npm run test:e2e
 npm run test:soak
 ```
 
-The browser suite has 47 passing checks and 68 intentional matrix skips at 390×844, 844×390, 832×608, 832×749, and 1024×768. Normal concurrency is capped at two; heavyweight inventory matrices run serially, and a dedicated contract cold-starts two independent clients together. `fold-touch.spec.ts` verifies full-canvas coverage, no scroll, held-touch movement, real grass/debris progress, release-to-stop, Safe Home, and live scene-preserving resize. `content-contracts.spec.ts` runs its full matrix once at Fold fullscreen: every gallery/Settings screen, exact production art for all 22 machines, all 20 yard and 12 room startups, Pause/Resume, Quiet, Finish, exact responsive DOM accessibility mirrors, all room/pad controls, Safe Home announcements, live tutorial relayout, normal/Calm Motion, and the two-client cold start. `continuity.spec.ts` covers both first-run tutorial buttons, all four touch schemes in both activities, gallery swipes, long-screen scrolling, Settings toggle persistence, no accidental selection after a drag, exact selected-yard and selected-room continuity, HUD touch exclusion, and Canvas/AudioContext warning regressions.
+The browser suite has 47 passing checks and 68 intentional matrix skips at 390×844, 844×390, 832×608, 832×749, and 1024×768. Local runs use two workers; CI uses one worker so the production-art matrices receive the full hosted-runner budget. Heavyweight inventory matrices run serially, and a dedicated contract still cold-starts two independent clients together. `fold-touch.spec.ts` verifies full-canvas coverage, no scroll, held-touch movement, real grass/debris progress, release-to-stop, Safe Home, and live scene-preserving resize. `content-contracts.spec.ts` runs its full matrix once at Fold fullscreen: every gallery/Settings screen, exact production art for all 22 machines, all 20 yard and 12 room startups, Pause/Resume, Quiet, Finish, exact responsive DOM accessibility mirrors, all room/pad controls, Safe Home announcements, live tutorial relayout, normal/Calm Motion, and the two-client cold start. `continuity.spec.ts` covers both first-run tutorial buttons, all four touch schemes in both activities, gallery swipes, long-screen scrolling, Settings toggle persistence, no accidental selection after a drag, exact selected-yard and selected-room continuity, HUD touch exclusion, and Canvas/AudioContext warning regressions.
+
+`.github/workflows/ci.yml` is configured to run build, unit/content, gateway, and real worker-upgrade checks on Ubuntu, Windows, and macOS, compare all three canonical manifests with `scripts/compare-release-manifests.mjs`, then run the Chrome E2E and exact offline-release gates on Ubuntu. Soak, gameplay-scale visual review, and physical/manual acceptance remain explicit non-CI gates.
 
 `src/data/levels.test.ts` enforces rectangular rows, closed fences, the supported map alphabet, and exactly one start for all authored yards plus 32 deterministic New Yard seeds. `visitYard` and `visitRoom` keep most-recent-first histories so Free Mow and the vacuum garage continue the place the child just chose.
 

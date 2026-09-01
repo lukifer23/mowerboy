@@ -1,6 +1,6 @@
 # Asset provenance and production contract
 
-Updated: 2026-08-30
+Updated: 2026-09-01
 
 MowerBoy uses original, unbranded machine and environment art created specifically for this private game. No manufacturer logo, copied game asset, stock pack, or trademarked machine identity is part of the production inventory.
 
@@ -29,9 +29,9 @@ The three retained JPEG source/reference files (`icon-src.jpg`, `icons/home.jpg`
 
 `src/data/asset-manifest.json` is the canonical runtime inventory. The build generates the public copy and release manifest from it, so runtime loading, validation, offline packs, and browser tests cannot silently drift. `npm run check:assets` is part of every production build. It requires all 59 runtime production files, rejects missing/tiny/corrupt images, validates genuine WebP portrait signatures, requires machine/environment cutouts to be non-interlaced 8-bit RGBA PNGs, verifies genuine visible and transparent pixels, and rejects artwork touching the image boundary. Every production file must appear exactly once in the core, mowing, or vacuum pack. Original portrait JPEGs and unused HUD references live under `source-art/`, outside the shipped and cached release.
 
-Browser contracts then prove that every one of the 14 mower and 8 vacuum IDs resolves to its exact production world texture. The contact-sheet review artifacts are:
+Browser contracts then prove that every one of the 14 mower and 8 vacuum IDs resolves to its exact production world texture. Historical contact-sheet review artifacts were written to the following ignored paths, but are not retained in this checkout; rerun `npm run test:visual` before citing fresh gameplay-scale visual acceptance:
 
 - `.gstack/qa-reports/screenshots/2026-08-28-machine-contact-sheet.png`
 - `.gstack/qa-reports/screenshots/2026-08-28-environment-contact-sheet.png`
 
-Canvas vector renderers remain complete recovery paths when an image cannot load. They are functional original renderers, not blank placeholders, and production tests require the raster texture whenever the validated asset exists. `npm run test:offline` additionally builds the production app, verifies the active 67-file release inventory by byte length and SHA-256 across the three packs, disables networking, and opens real mowing and vacuum scenes with their exact production machine art.
+Canvas vector renderers remain complete recovery paths when an image cannot load. They are functional original renderers, not blank placeholders, and production tests require the raster texture whenever the validated asset exists. After `npm run build`, `npm run test:offline` serves that production output, verifies the active 67-file release inventory by byte length and SHA-256 across the three packs, disables networking, and opens real mowing and vacuum scenes with their exact production machine art.

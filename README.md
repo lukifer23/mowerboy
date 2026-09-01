@@ -30,7 +30,7 @@ npm start
 
 3. The browser host page opens with a large QR code and LAN URLs. On the **iPad / phone / tablet** (same Wi-Fi):
    - Open Safari or Chrome
-   - Type the `http://192.168.…:5173` address, or scan the QR
+   - Open the exact LAN address shown on the host page (usually port 5173), or scan the QR
    - Tap the screen once if the engine is quiet (iPads stay silent until a tap)
    - Optional: use **Add to Home Screen** if the browser offers it
    - Or tap **Full screen** on the title screen to hide browser tabs while playing
@@ -41,11 +41,11 @@ Plain `http://192.168.…` LAN play is the simplest setup and the in-game **Full
 
 ### This computer only
 
-`http://localhost:5173`
+Use **Play on this computer** on the host page. The address is usually `http://localhost:5173`, but the host page shows the exact fallback port when 5173 is occupied.
 
 ### Windows firewall
 
-If the tablet cannot open the page, allow **Node.js** through the Windows firewall (Private networks) when Windows asks, or add an inbound rule for port **5173**.
+If the tablet cannot open the page, allow **Node.js** through the Windows firewall (Private networks) when Windows asks. If you use a port-specific inbound rule, use the actual port shown on the host page.
 
 ## How to play
 
@@ -64,7 +64,7 @@ Parent keys on a computer: **WASD** or arrows.
 - **8 vacuums:** upright, cyclone, stick, canister, shop, robot, commercial, and ride-on sweeper
 - **12 rooms** across carpet, rugs, hardwood, tile, and concrete with nine real debris types
 - Powerups on the lawn: turbo, wide deck, rain, magnet, rainbow, birds, mulch, lights
-- Every machine and yard is available immediately
+- Every machine, yard, and room is available immediately
 - Settings: four control schemes, three volume sliders, calm motion, strong colors, Safe Home, Full screen, and tips
 
 ## Settings (the gear)
@@ -90,13 +90,17 @@ Parent keys on a computer: **WASD** or arrows.
 | `npm start` | Production gateway, browser host dashboard, LAN URLs, QR, health check, and stale-build detection |
 | `npm test` | Unit tests |
 | `npm run test:e2e` | 47 passing Chrome checks: tutorials, touch/resize, controls, accessibility mirrors, concurrent cold starts, galleries, continuity, production art, and every yard/room startup |
+| `npm run test:gateway` | Isolated production-host health, release, and static-route smoke test |
 | `npm run test:sw-upgrade` | Exercises the real worker code through promotion, interrupted/corrupt staging, quota isolation, rollback, pruning, and active-only fetches |
-| `npm run test:offline` | Builds/serves production, disables networking, and proves both activities reopen with their real cached machine art |
+| `npm run test:offline` | Serves the existing production build, disables networking, and proves both activities reopen with their real cached machine art; run `npm run build` first when invoking it alone |
 | `npm run test:soak` | Five-minute alternating Mow/Vacuum cleanup and heap check |
+| `npm run test:visual` | Captures 54 gameplay-scale machine/place scenes from an already-running production gateway |
 | `npm run test:fold -- --url=… --drag=x1,y1,x2,y2` | Attach to an existing Fold Chrome tab for a physical-device touch/screenshot check; never opens a browser |
 | `npm run build` | Production build |
 | `npm run serve` | Build, then LAN preview |
 | `npm run verify` | Catalog/release manifests, service-worker upgrade tests, typecheck, production build, 93 unit tests, 47 browser checks, gateway smoke, and production-offline replay |
+
+`.github/workflows/ci.yml` is configured to run build/unit/gateway/worker checks on Ubuntu, Windows, and macOS, a cross-OS release-ID/inventory comparison, plus the Chrome production and exact offline-release gates on Ubuntu for pushes and pull requests to `main`. Soak, gameplay-scale visual review, and physical/manual acceptance remain separate gates.
 
 ## Docs
 

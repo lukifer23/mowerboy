@@ -50,13 +50,33 @@ jobs:
         run: npm run test:sw-upgrade
 
       - name: Upload release manifest
-        if: runner.os == 'Linux' && !cancelled()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v6
         with:
-          name: release-manifest
+          name: release-manifest-${{ runner.os }}
           path: dist/release-manifest.json
           if-no-files-found: error
           retention-days: 14
+
+  release-consistency:
+    name: Release consistency
+    needs: core
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Download operating-system manifests
+        uses: actions/download-artifact@v7
+        with:
+          pattern: release-manifest-*
+          path: manifests
+          merge-multiple: false
+
+      - name: Compare release IDs and inventories
+        run: node scripts/compare-release-manifests.mjs manifests
 
   browser:
     name: Chrome production flows

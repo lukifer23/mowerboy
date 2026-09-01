@@ -1,6 +1,6 @@
 # Browser, Fold, and touch verification
 
-Updated: 2026-08-30
+Updated: 2026-09-01
 
 This is the evidence ledger for the web/touch release pass. A green automated check is not treated as physical-device, listening, Windows-host, or parent acceptance.
 
@@ -9,16 +9,17 @@ This is the evidence ledger for the web/touch release pass. A green automated ch
 | Gate | Result |
 |---|---|
 | TypeScript | `npx tsc --noEmit` passes |
-| Deterministic verification | Full `npm run verify` passes on the final 2026-08-30 change set: build, 93 unit, gateway, worker upgrade, 47 browser, and offline gates |
+| Deterministic verification | Full `npm run verify` passes on the 2026-09-01 change set: build, 93 unit, gateway, worker upgrade, 47 browser, and offline gates |
+| Repository CI configuration | `.github/workflows/ci.yml` is configured to run build, unit, gateway, and worker-upgrade gates on Ubuntu, Windows, and macOS; compare the three generated release inventories; and run Chrome plus offline production flows on Ubuntu. A successful remote run of this change set must be recorded separately. Soak, visual review, and physical/human acceptance remain separate gates. |
 | Unit/content | 93 Vitest tests pass in 12 files, including swept movement, incremental growth, and material-aware audio |
 | Browser touch/content | 47 checks pass in installed Chrome; 68 intentional project skips keep heavyweight matrices single-run; includes two simultaneous cold clients, exact resize control counts, room/pad controls, Safe Home announcements, tutorial relayout, and normal/Calm Motion |
-| Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 15.46 MiB; release `07aedf4635513a4f` contains 67 files at 16.79 MiB |
+| Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 15.46 MiB; release `a98611f49aca47b0` contains 67 files at 16.79 MiB |
 | Service-worker upgrade | Real worker code passes deterministic V1→V2 promotion, optional-pack quota isolation, interrupted/corrupt staging, rollback, third-release pruning, integrity inventory, and active-only fetch tests |
 | Production offline | Exact active `ReleaseManifestV2` URLs, lengths, hashes, and integrity headers validate; with networking disabled, Tractor Field/Field Giant and Community Hall/Floor Rider reopen with production art |
-| Windows shortcut | Freshly reinstalled Desktop `.lnk` targets hidden `wscript.exe` → `scripts/windows-launch.vbs` with the project working directory and custom icon. A cold launch reached the current fingerprinted release on 5173; dashboard, QR SVG, and game returned 200 and both detected LAN URLs were exposed. A repeat launch reused the same process with exactly one MowerBoy listener. |
+| Windows shortcut | Desktop `.lnk` targets hidden `wscript.exe` → `scripts/windows-launch.vbs` with the project working directory and custom icon. A 2026-09-01 cold launch reached release `a98611f49aca47b0` on 5173; dashboard, `/host/qr.svg`, and game returned 200, both detected LAN URLs were exposed, and exactly one MowerBoy listener remained. |
 | Dependency audit | 0 known vulnerabilities after Vite 8.2.2 / Vitest 4.1.11 upgrade |
 | Soak | Current run: 301.0 seconds, 33 Mow/Vacuum cycles, 66 measured activity starts after warm-up, 0 errors, +0.9 MiB post-GC heap, max p95 8.34 ms, worst 11.14 ms, stable resources |
-| Gameplay-scale visual inventory | 54 current captures cover all 14 mowers, 20 yards, 8 vacuums, and 12 rooms at 832×749 with expected production texture and valid fresh simulation state |
+| Gameplay-scale visual inventory | `npm run test:visual` is configured to capture 54 scenes at 832×749. Generated captures are not retained in this checkout, so rerun it before citing fresh visual acceptance. |
 
 Playwright viewports:
 
@@ -42,11 +43,11 @@ Device: Samsung SM-F966U, Android Chrome, USB/ADB plus LAN URL `http://192.168.1
 | Vacuum held touch | machine moved from `(275.2, 967.6)` to `(497.34, 924.28)`; progress `0 → 0.00833`; released at throttle/speed 0 |
 | Frame pacing | active Vacuum scene: 469 frames / 4.0065 s, 116.8 FPS, p50 8.3 ms, p95 8.4 ms, worst 16.7 ms, 0 frames over 33.4 ms |
 | Cold production startup | fresh scoped-loader `:5174` origin: TTFB 5.4 ms, DOM interactive 9.6 ms, load 275.3 ms, FCP 276 ms, 17 requests, 1.88 MiB transfer, 8.2 MiB used JS heap, 0 errors |
-| Current physical Fold regression | Existing Chrome tab at 832×609: Field Giant moved 382 world units and cut grass; Hall Keeper moved 293 world units and cleaned debris; both released at throttle/speed 0 with zero console/log errors |
+| Latest recorded physical Fold regression (pre-hardening) | Existing Chrome tab at 832×609: Field Giant moved 382 world units and cut grass; Hall Keeper moved 293 world units and cleaned debris; both released at throttle/speed 0 with zero console/log errors |
 
-Screenshots live under `.gstack/qa-reports/screenshots/`. The five-minute machine-readable soak result is `.gstack/soak/latest.json`.
+Historical physical screenshots were written under `.gstack/qa-reports/screenshots/`, but they are not present in this checkout. The retained five-minute machine-readable soak result is `.gstack/soak/latest.json`.
 
-The physical Fold evidence above predates the final rounded-path, grouped-fence, clustered-debris, wheel-overlay, audio, and offline-cache pass. The Fold is currently off, so that evidence remains useful history but does not certify those newest changes on-device; the automated Fold-sized browser matrix does cover the new code.
+The physical Fold evidence above predates the final rounded-path, grouped-fence, clustered-debris, wheel-overlay, audio, and offline-cache pass. No newer physical Fold run is recorded after those hardening changes, so that evidence remains useful history but does not certify the newest code on-device; the automated Fold-sized browser matrix does cover it.
 
 ## Soak result
 
@@ -69,7 +70,7 @@ The current animated run lasted 301.0 seconds after a real two-activity warm-up.
 - Controlled listening across every mower/vacuum family and interaction material
 - Thirty-minute alternating-activity soak on the physical Fold
 - Trusted-local HTTPS setup if Android installable-PWA behavior is required; plain LAN HTTP fullscreen is already verified
-- Human firewall/tablet acceptance of the Windows desktop shortcut; installation metadata, hidden target chain, cold/repeat launches, current-build fingerprinting, gateway health, dashboard, LAN URLs, QR, and game responses pass on the current Windows host
+- Human firewall prompt and real tablet/QR connection using the Windows Desktop shortcut; local shortcut metadata, cold/repeat launch, health, dashboard, LAN URL, and QR response evidence is recorded above
 - macOS launcher/host validation
 - VoiceOver on iPad and TalkBack on the physical Fold
 - Parent and child acceptance

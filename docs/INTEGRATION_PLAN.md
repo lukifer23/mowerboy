@@ -2,11 +2,11 @@
 
 Approved: 2026-08-28  
 Status: in execution — combined hub and complete Vacuum launch set are live; release-polish gates remain  
-Source product design: `/Users/admin/.gstack/projects/MowerBoy/admin-unknown-design-20260828-201446.md`
+Source product rules: [`DESIGN.md`](DESIGN.md) and [`ACTIVITY_FLOW.md`](ACTIVITY_FLOW.md)
 
 This plan adds a complete Vacuum activity without removing or weakening mowing. It also closes the bounded outdoor fidelity program. A child never sees unfinished content.
 
-## Execution snapshot — 2026-08-30
+## Execution snapshot — 2026-09-01
 
 - Shared `DriveableMachine`, `TouchDrive`, `ActivityHud`, audio host, Save v5 continuity, and composed activity lifecycle are integrated without merging mow/vacuum simulation.
 - The picture-first combined hub, four galleries, 14 mowers, 20 yards, 8 vacuums, 12 rooms, five floors, and nine debris types are child-facing with no locks.
@@ -47,7 +47,7 @@ This plan adds a complete Vacuum activity without removing or weakening mowing. 
 main.ts / game.ts
        |
        v
-BootScene -> ActivityHubScene -> SettingsScene
+BootScene -> TitleScene -> SettingsScene
                 |       |
           +-----+       +------+
           v                    v
@@ -96,12 +96,13 @@ interface DriveableMachine {
   speed: number;
   throttle: number;
   steering: number;
-  topSpeed: number;
-  update(dt: number): void;
+  readonly topSpeed: number;
+  readonly turnRate: number;
+  readonly pivotTurn: boolean;
 }
 ```
 
-`TouchDrive` consumes `DriveableMachine`, not `Mower`. `ActivityHud` receives callbacks/state and owns no activity logic. Every scene shutdown destroys input listeners, tweens, emitters, dynamic textures, cameras, and activity audio nodes.
+`TouchDrive` consumes `DriveableMachine`, not `Mower`. Mower and Vacuum compute a candidate with `step`, resolve it through swept collision/world bounds, then `commitPose` before surface transformation. `ActivityHud` receives callbacks/state and owns no activity logic. `ActivityLifecycle` owns the UI camera, diagnostics, and registered cleanup; each scene cleanup destroys its own drive, machine, field, layout, and overlays. Phaser owns scene camera teardown, while `AudioEngine` intentionally remains a shared singleton.
 
 ## Execution order and gates
 
@@ -111,7 +112,7 @@ Deliverables:
 
 - [x] Add Playwright with stable URLs/query flags, real Chrome touch input, deterministic content, console failure capture, responsive sizes, and read-only real-scene diagnostics.
 - [x] Add content-integrity checks for asset existence, byte budgets, transparent bounds, stable IDs, authored layout invariants, and activity cache manifests.
-- [~] Capture Fold evidence through ADB/CDP: CSS viewport, DPR, device posture, screenshots, real movement/progress, frame metrics, heap, and console errors are recorded manually; a reusable capture script and physical folded pass remain.
+- [~] Capture Fold evidence through ADB/CDP: CSS viewport, DPR, device posture, screenshots, real movement/progress, frame metrics, heap, and console errors are recorded manually; `scripts/fold-check.mjs` is reusable, while a current physical folded pass remains.
 - [x] Capture current mowing and vacuum touch baselines before further behavior edits.
 
 Gate: TypeScript, 93 tests, build, 47-check Playwright flow, service-worker upgrade coverage, production-offline replay, and real unfolded Fold Mow/Vacuum/Home/fullscreen history succeed. Physical folded evidence remains a release-confidence item, not a reason to falsify this gate.
@@ -124,7 +125,7 @@ One bounded slice at a time:
 2. Extract `ActivityHud` and UI-camera pin/ignore lifecycle.
 3. Generalize `TouchDrive` to `DriveableMachine` without changing control math.
 4. Extract activity-neutral collision resolution.
-5. Add `ActivityAssets` manifests/load/unload lifecycle.
+5. Add `AssetCatalog` activity loading plus the `ReleaseManifestV2` pack lifecycle.
 6. Split shared audio host from mow-specific profiles/layers.
 7. Rename the focused outdoor scene to `MowPlayScene` only after route parity.
 
@@ -142,9 +143,9 @@ Gate after every step: the full mowing parity suite and Fold smoke pass. Do not 
 
 Gate: all fourteen machines and twenty yards pass the outdoor evidence ledger. Remaining non-ledger polish becomes later work and cannot silently block Vacuum.
 
-### Milestone 3 — hidden production vacuum slice
+### Milestone 3 — initial production vacuum slice
 
-Behind the development/test flag only:
+This slice was implemented behind development/test routing before the complete activity was exposed:
 
 - Implement `RoomLayout`, floor regions, shaped indoor props, debris-safe scatter bounds, starts, and reachability.
 - Implement `DebrisField` rendering/update with dirty-region batching and a 320-sprite ceiling.
@@ -152,7 +153,7 @@ Behind the development/test flag only:
 - Implement Living Room production floors, rug, walls, sofa, chairs, table, lighting, debris, grooming lines, hard-floor shine, helper, tutorial, completion, and Home.
 - Add vacuum motor/airflow/brush/load/impact/floor audio using the shared host.
 
-Gate: Bright Upright in Living Room passes pure tests, E2E, every responsive viewport, actual Fold play, controlled listening, helper ≤8 seconds, Safe Home, cleanup, and performance.
+Gate result: automation, responsive browser coverage, historical unfolded-Fold play, helper, Safe Home, cleanup, and performance passed. Controlled listening remains an external Milestone 6 acceptance gate.
 
 ### Milestone 4 — full vacuum content
 
@@ -161,17 +162,17 @@ Gate: Bright Upright in Living Room passes pure tests, E2E, every responsive vie
 - Complete carpet/rug grooming, hardwood/tile/concrete shine, and nine debris render/animation/audio families.
 - Add vacuum and room galleries, short copy, production portraits/previews, selection persistence, three-step tutorial, completion/Again/Home flows, and all 96 compatibility smoke cases.
 
-Gate: every visible card works; no two machines are reskins; all room/floor/debris coverage and evidence ledgers pass.
+Gate result: every visible card starts real content and all room/floor/debris automation passes. Final gameplay-scale visual and controlled-listening acceptance remains external.
 
 ### Milestone 5 — combined hub, packs, and PWA
 
 - Implement the approved Activity Hub and last-activity resume.
-- Add child-safe activity loading/recovery and expose Vacuum only in builds whose complete pack validates.
+- Add child-safe activity loading/recovery so Vacuum remains functional through a validated pack or procedural runtime recovery.
 - Add core/mow/vacuum build manifests, staging/validation/promotion/rollback caches, storage quota handling, and stale-cache cleanup.
 - Add trusted-local HTTPS setup/runbook for installable PWA; preserve plain HTTP LAN browser play and fullscreen.
 - Verify cross-activity save, audio fades, listeners, cameras, textures, input ownership, and Home.
 
-Gate: fresh/migrated/offline/cache-interrupted flows pass with no dead tile or partial scene.
+Gate result: fresh/migrated and exact-offline browser flows pass. Cache interruption, corrupt hashes, quota isolation, rollback, pruning, and active-only fetches pass in the deterministic real-worker harness; physical quota acceptance remains external.
 
 ### Milestone 6 — release confidence
 
@@ -181,7 +182,7 @@ Gate: fresh/migrated/offline/cache-interrupted flows pass with no dead tile or p
 - [x] Run a five-minute alternating-activity performance/cleanup case at the measured Fold fullscreen viewport.
 - [ ] Run a 30-minute alternating-activity soak on the physical Fold.
 - Validate the macOS launcher and human Windows desktop-shortcut/firewall flow; automated Windows gateway, readiness, dashboard, LAN URL, and QR smoke already pass.
-- Record parent acceptance; only then mark Vacuum visible in the release configuration.
+- Record parent/child acceptance; only then make a final-release claim.
 
 ## Failure modes
 
@@ -189,13 +190,13 @@ Gate: fresh/migrated/offline/cache-interrupted flows pass with no dead tile or p
 |---|---|---|
 | blocked/corrupt save | complete defaults; play continues | migration/unit/E2E |
 | touch ends outside canvas or orientation changes | machine gently stops; no stuck throttle | pointer cancel/blur/device E2E |
-| activity assets fail | loading scene keeps Home; no partial destination | interrupted-pack E2E |
+| activity assets fail | a verified prior service-worker release remains active, or machine/prop art uses the procedural recovery renderer inside the normal scene/HUD | worker failure tests; a dedicated browser load-failure recovery case remains required |
 | stale service worker | previous valid pack remains active | manifest rollback test |
-| insufficient cache quota | hub/current activity remains usable | quota-injection E2E |
+| insufficient cache quota | core/current valid pack remains usable | deterministic worker quota-isolation test |
 | audio context suspends | first pointer resumes; visual feedback remains | iOS/Android device pass |
 | scene shutdown misses cleanup | soak counters fail before release | CDP soak |
-| large machine cannot reach debris/grass | content-integrity build fails; helper still covers all | reachability/property tests |
-| prop art and collision disagree | screenshot/collision overlay review fails | debug-overlay artifact |
+| large machine cannot reach debris/grass | helper still covers all; authored footprints and pickup safety must pass | layout/footprint tests + manual reachability review |
+| prop art and collision disagree | gameplay-scale visual review rejects the scene | visual inventory + collision tests |
 | frame time exceeds budget | bounded effect counts reduce; core transformation remains | performance gate |
 
 ## Test coverage map
@@ -212,7 +213,7 @@ Debris             -> scatter/intake/pull/resistance/tumble/helper/completion
 Layouts            -> 20 yards + 12 rooms/start/connectivity/masks/reachability
 Content            -> 14 mowers/8 vacuums/20 yards/12 rooms/production contracts
 Asset manifests    -> existence/hash/size/bounds/pack completeness/rollback
-Audio offline      -> profile distinction/routing/peak/ramp/finite samples
+Audio offline      -> profile gain + material acoustic mappings; controlled listening remains physical
 
 USER FLOWS (Playwright) [E2E]
 ===============================
@@ -221,8 +222,12 @@ boot -> hub -> Vacuum -> machine -> room -> tutorial -> clean -> Finish -> Home
 settings -> each control/audio/comfort/fullscreen -> reload -> preserved
 resume -> last valid pair / invalid pair fallback
 pointer drag -> HUD crossing -> release outside -> orientation -> safe stop
-pack load -> success / interruption / stale manifest / retry / prior activity
-PWA -> install-ready / offline both activities / service-worker upgrade
+production release -> exact active inventory / offline entry into both activities / production art
+
+SERVICE-WORKER HARNESS [REAL WORKER CODE]
+=========================================
+pack staging -> success / interruption / corrupt hash / quota isolation / rollback / third-release pruning
+PWA -> manifest/SW/active-only fetches; install-ready remains trusted-HTTPS physical acceptance
 
 PHYSICAL ACCEPTANCE
 ===================
@@ -247,8 +252,8 @@ macOS/Windows   -> parent host + LAN/HTTPS + QR + restart
 
 | Feature | Loading | Empty | Error | Success | Partial |
 |---|---|---|---|---|---|
-| Hub | title art and machine motion while manifests validate | never empty in a valid build | Home/current activity remains; parent status explains host/cache | both activity pictures active | never exposes only a partial activity |
-| Galleries | selected production machine motion | build fails if inventory empty | returns Home; parent status identifies missing pack | all cards selectable | swipe position and current selection retained |
+| Hub | title art and selected production portraits while assets validate | never empty in a valid build | verified prior release or selected-machine fallback; gateway setup errors remain on `/host` | both activity pictures active | never exposes only a partial activity |
+| Galleries | selected production portrait/art | build fails if inventory empty | procedural fallback cards remain selectable; no automatic Home redirect | all cards selectable | swipe position and current selection retained |
 | Play | production machine plus Home/Quiet | clean/cut field is a valid replay state | safe stop; Home remains | transformation, warm celebration, Again/Home | progress visible; Finish always available |
 | Save | in-memory defaults immediately | fresh save opens complete game | storage failure is silent to child, logged for parent | continuity persists | valid fields preserved while invalid IDs fall back |
 | Fullscreen/PWA | honest parent status | browser play still works without HTTPS setup | no false install claim; setup instructions | standalone launch/manifest/SW pass | HTTP supports browser/fullscreen only |
