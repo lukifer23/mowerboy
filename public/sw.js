@@ -108,6 +108,13 @@ async function fetchFromActiveRelease(request) {
       const hit = await cache.match(request, { ignoreSearch: false });
       if (hit) return hit;
     }
+    // Every SPA navigation belongs to the promoted release, including routes
+    // and query-string test/device entry points that have no exact cache key.
+    // Do not consult the network for a different, unverified shell first.
+    if (request.mode === "navigate") {
+      const core = await caches.open(releaseCacheName(state.activeReleaseId, "core"));
+      return (await core.match(new URL("./", self.registration.scope))) ?? Response.error();
+    }
   }
 
   try {

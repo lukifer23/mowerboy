@@ -9,14 +9,14 @@ This is the evidence ledger for the web/touch release pass. A green automated ch
 | Gate | Result |
 |---|---|
 | TypeScript | `npx tsc --noEmit` passes |
-| Deterministic verification | Full `npm run verify` passes on the 2026-09-01 change set: build, 93 unit, gateway, worker upgrade, 47 browser, and offline gates |
+| Deterministic verification | Full `npm run verify` passed on the preceding 2026-09-01 app change set. The current service-worker navigation correction separately passes production build, 93 unit checks, 2 worker tests, and repeated exact-offline Mow/Vacuum replay; remote Chrome/offline CI must pass on the committed fix. |
 | Repository CI configuration | `.github/workflows/ci.yml` is configured to run build, unit, gateway, and worker-upgrade gates on Ubuntu, Windows, and macOS; compare the three generated release inventories; and run Chrome plus offline production flows on Ubuntu. A successful remote run of this change set must be recorded separately. Soak, visual review, and physical/human acceptance remain separate gates. |
 | Unit/content | 93 Vitest tests pass in 12 files, including swept movement, incremental growth, and material-aware audio |
 | Browser touch/content | 47 checks pass in installed Chrome; 68 intentional project skips keep heavyweight matrices single-run; includes two simultaneous cold clients, exact resize control counts, room/pad controls, Safe Home announcements, tutorial relayout, and normal/Calm Motion |
-| Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 15.46 MiB; release `a98611f49aca47b0` contains 67 files at 16.79 MiB |
+| Production build | Vite 8.2.2 build passes; 59 canonical production assets validate at 15.46 MiB; release `52eff4e8467540b3` contains 67 files at 16.79 MiB |
 | Service-worker upgrade | Real worker code passes deterministic V1→V2 promotion, optional-pack quota isolation, interrupted/corrupt staging, rollback, third-release pruning, integrity inventory, and active-only fetch tests |
 | Production offline | Exact active `ReleaseManifestV2` URLs, lengths, hashes, and integrity headers validate; with networking disabled, Tractor Field/Field Giant and Community Hall/Floor Rider reopen with production art |
-| Windows shortcut | Desktop `.lnk` targets hidden `wscript.exe` → `scripts/windows-launch.vbs` with the project working directory and custom icon. A 2026-09-01 cold launch reached release `a98611f49aca47b0` on 5173; dashboard, `/host/qr.svg`, and game returned 200, both detected LAN URLs were exposed, and exactly one MowerBoy listener remained. |
+| Windows shortcut | Desktop `.lnk` targets hidden `wscript.exe` → `scripts/windows-launch.vbs` with the project working directory and custom icon. A 2026-09-01 current-source launch reached release `52eff4e8467540b3` on documented fallback port 5175 because earlier verified gateways occupied 5173/5174; dashboard, `/host/qr.svg`, and game returned 200. A repeat launch reused the same sole current-source gateway rather than creating another. |
 | Dependency audit | 0 known vulnerabilities after Vite 8.2.2 / Vitest 4.1.11 upgrade |
 | Soak | Current run: 301.0 seconds, 33 Mow/Vacuum cycles, 66 measured activity starts after warm-up, 0 errors, +0.9 MiB post-GC heap, max p95 8.34 ms, worst 11.14 ms, stable resources |
 | Gameplay-scale visual inventory | `npm run test:visual` is configured to capture 54 scenes at 832×749. Generated captures are not retained in this checkout, so rerun it before citing fresh visual acceptance. |

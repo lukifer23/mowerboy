@@ -99,6 +99,15 @@ test("fetch reads the active release only and never falls through to previous or
   harness.serve(v2);
   await harness.installAndActivate();
 
+  const networkCount = harness.networkRequests.length;
+  const navigation = await harness.dispatchFetch("./?test=1&activity=mow", { mode: "navigate" });
+  assert.equal(await navigation.text(), "<html>active</html>");
+  assert.equal(
+    harness.networkRequests.length,
+    networkCount,
+    "active query-string navigation must not consult the network",
+  );
+
   const activeResponse = await harness.dispatchFetch("./mow.png");
   assert.equal(await activeResponse.text(), "active:mow");
 
@@ -157,10 +166,13 @@ function createHarness() {
       });
       return result;
     },
-    async dispatchFetch(path) {
+    async dispatchFetch(path, options = {}) {
       let responsePromise;
+      const url = new URL(path, origin).href;
       listeners.get("fetch")({
-        request: new Request(new URL(path, origin)),
+        request: options.mode === "navigate"
+          ? { url, method: "GET", mode: "navigate" }
+          : new Request(url),
         respondWith(value) { responsePromise = Promise.resolve(value); },
       });
       assert.ok(responsePromise, "fetch handler did not respond");
@@ -288,6 +300,7 @@ function entry(path, body) {
 function requestUrl(input) {
   if (input instanceof Request) return input.url;
   if (input instanceof URL) return input.href;
+  if (input && typeof input === "object" && typeof input.url === "string") return input.url;
   return new URL(String(input), origin).href;
 }
 function jsonResponse(value) { return new Response(JSON.stringify(value), { headers: { "content-type": "application/json" } }); }
