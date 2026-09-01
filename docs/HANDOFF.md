@@ -30,7 +30,7 @@ The repository was intentionally rewritten to a sanitized root before this hando
 
 Exact suite counts, release ID/size, soak metrics, host evidence, and remaining gaps are canonical in [`QA.md`](QA.md). Keep volatile evidence there so the handoff, roadmap, and QA ledger cannot drift independently.
 
-The local automated release baseline is green; remote CI for the committed change set must also pass. Physical Fold/iPad, assistive-technology, controlled-listening, human Windows shortcut/firewall, macOS host, parent, and child acceptance remain separate external gates. Do not write “perfect” or “release-ready” until those gates pass.
+The local automated release baseline and its committed remote CI run are green; exact evidence remains canonical in [`QA.md`](QA.md). Physical Fold/iPad, assistive-technology, controlled-listening, human Windows shortcut/firewall, macOS host, parent, and child acceptance remain separate external gates. Do not write “perfect” or “release-ready” until those gates pass.
 
 ## Resume
 

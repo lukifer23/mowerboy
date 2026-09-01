@@ -100,7 +100,7 @@ Parent keys on a computer: **WASD** or arrows.
 | `npm run serve` | Build, then LAN preview |
 | `npm run verify` | Catalog/release manifests, service-worker upgrade tests, typecheck, production build, 95 unit tests, 47 browser checks, gateway smoke, and production-offline replay |
 
-`.github/workflows/ci.yml` is configured to run build/unit/gateway/worker checks on Ubuntu, Windows, and macOS, a cross-OS release-ID/inventory comparison, plus the Chrome production and exact offline-release gates on Ubuntu for pushes and pull requests to `main`. Soak, gameplay-scale visual review, and physical/manual acceptance remain separate gates.
+`.github/workflows/ci.yml` runs build/unit/gateway/worker checks on Ubuntu, Windows, and macOS, a cross-OS release-ID/inventory comparison, plus the Chrome production and exact offline-release gates on Ubuntu for pushes and pull requests to `main`. Current run IDs and dated results live only in [`docs/QA.md`](docs/QA.md). Soak, gameplay-scale visual review, and physical/manual acceptance remain separate gates.
 
 ## Docs
 
