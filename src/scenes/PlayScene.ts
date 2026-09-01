@@ -199,7 +199,8 @@ export class PlayScene extends Phaser.Scene {
       audio.setThrottle(0, false, 0);
       return;
     }
-    const dt = Math.min(0.05, delta / 1000);
+    const elapsed = Math.min(0.25, Math.max(0, delta / 1000));
+    const dt = Math.min(0.05, elapsed);
     this.drive.update(dt);
 
     const mulch = this.hasPower("mulcher");
@@ -237,7 +238,10 @@ export class PlayScene extends Phaser.Scene {
     );
 
     if (this.helperOn) {
-      this.helperAcc += this.helperRate * dt;
+      // Finish is a child-facing eight-second promise, not a frame-rate test.
+      // Keep movement/collision on the conservative capped step above, while
+      // advancing the helper from bounded wall time on slower devices.
+      this.helperAcc += this.helperRate * elapsed;
       const n = Math.floor(this.helperAcc);
       if (n > 0) {
         this.helperAcc -= n;

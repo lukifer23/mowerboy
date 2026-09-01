@@ -123,7 +123,8 @@ export class VacuumPlayScene extends Phaser.Scene {
       audio.setVacuumState({ throttle: 0, speed: 0, suctionLoad: 0, brush: this.vacuum.def.rig.brushRoll, floor: this.room?.floorAt(this.vacuum.x, this.vacuum.y) ?? "carpet" });
       return;
     }
-    const dt = Math.min(.05, delta / 1000);
+    const elapsed = Math.min(.25, Math.max(0, delta / 1000));
+    const dt = Math.min(.05, elapsed);
     this.drive.update(dt);
     const current: DrivePose = { x: this.vacuum.x, y: this.vacuum.y, heading: this.vacuum.heading, speed: this.vacuum.speed };
     const resolved = resolveDrivePose(current, this.vacuum.step(dt), {
@@ -143,7 +144,9 @@ export class VacuumPlayScene extends Phaser.Scene {
       intakeOffset: this.vacuum.intakeOffset, power: suctionOn ? .72 + this.vacuum.def.motor.airflow * .52 : 0,
     }, dt);
     if (this.helperOn) {
-      this.helperAcc += this.helperRate * dt;
+      // Finish keeps its eight-second child-facing duration even when a slow
+      // renderer needs a larger frame delta. Movement remains capped by dt.
+      this.helperAcc += this.helperRate * elapsed;
       const n = Math.floor(this.helperAcc);
       if (n > 0) { this.helperAcc -= n; if (this.debris.helperStep(n) === 0) this.helperOn = false; }
     }

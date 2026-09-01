@@ -122,6 +122,7 @@ test("all four touch control schemes move both real activities", async ({ page }
 
 test("touch cancellation clears pointer and pad ownership in both activities", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "fold-inner-fullscreen", "Interruption regression runs once at the primary Fold viewport.");
+  test.setTimeout(60_000);
   await page.addInitScript((value) => {
     if (!localStorage.getItem("mowerboy-save-v1")) localStorage.setItem("mowerboy-save-v1", JSON.stringify(value));
   }, SAVE);
@@ -163,6 +164,7 @@ test("touch cancellation clears pointer and pad ownership in both activities", a
 
 test("gallery swipes and long selection screens scroll without accidental selection", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "fold-inner-fullscreen", "Gesture regression runs once at the primary Fold viewport.");
+  test.setTimeout(60_000);
   await page.addInitScript((value) => {
     if (!localStorage.getItem("mowerboy-save-v1")) localStorage.setItem("mowerboy-save-v1", JSON.stringify(value));
   }, SAVE);

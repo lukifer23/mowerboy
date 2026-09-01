@@ -51,14 +51,16 @@ test("every authored yard and room creates a real playable scene",async({page})=
 });
 
 test("Pause, Quiet, and Finish are live child-safe controls",async({page})=>{
-  test.setTimeout(20_000);
+  test.setTimeout(30_000);
   const initial=await boot(page,"/?test=1&activity=mow&level=home&mower=backyard","play");
   const hud=initial.diagnostics!.hud;
   await page.touchscreen.tap(hud.pauseX,hud.secondaryY);expect((await page.evaluate(()=>window.__MOWERBOY_TEST__!.snapshot())).flags.paused).toBe(true);
   const v=page.viewportSize()!;
   await page.touchscreen.tap(v.width/2,v.height/2+20);expect((await page.evaluate(()=>window.__MOWERBOY_TEST__!.snapshot())).flags.paused).toBe(false);
   await page.touchscreen.tap(hud.muteX,hud.y);await expect.poll(async()=>page.evaluate(()=>JSON.parse(localStorage.getItem("mowerboy-save-v1")!).muted)).toBe(false);
-  await page.touchscreen.tap(hud.finishX,hud.secondaryY);await expect.poll(async()=>page.evaluate(()=>window.__MOWERBOY_TEST__!.snapshot().flags.celebrated),{timeout:12_000}).toBe(true);
+  await page.touchscreen.tap(hud.finishX,hud.secondaryY);
+  await expect.poll(async()=>page.evaluate(()=>{const flags=window.__MOWERBOY_TEST__!.snapshot().flags;return flags.helperOn||flags.celebrated;})).toBe(true);
+  await expect.poll(async()=>page.evaluate(()=>window.__MOWERBOY_TEST__!.snapshot().flags.celebrated),{timeout:12_000}).toBe(true);
 });
 
 test("two cold clients reach playable scenes together",async({browser}: { browser: Browser })=>{
