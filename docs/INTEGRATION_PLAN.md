@@ -11,7 +11,7 @@ This plan adds a complete Vacuum activity without removing or weakening mowing. 
 - Shared `DriveableMachine`, `TouchDrive`, `ActivityHud`, audio host, Save v5 continuity, and composed activity lifecycle are integrated without merging mow/vacuum simulation.
 - The picture-first combined hub, four galleries, 14 mowers, 20 yards, 8 vacuums, 12 rooms, five floors, and nine debris types are child-facing with no locks.
 - All 96 vacuum/room startup pairings passed in the controlled browser; Pause, Finish, 88% celebration, and Safe Home passed; a real unfolded Galaxy Fold held-touch pass cleaned 3% of a room.
-- The current hardening run passes TypeScript/build, 93 Vitest tests, 47 Playwright checks, canonical 59-asset validation, a sub-17 MiB `ReleaseManifestV2`, deterministic service-worker upgrade/failure coverage, gateway smoke, and network-disabled Mow/Vacuum replay. Activity-scoped loading, two-client cold start, exact selected generated-yard/room continuity, all controls, responsive accessibility ownership, production gateway health/QR smoke, real unfolded Fold history, measured frame pacing, and animated soak automation are covered. Controlled listening, physical folded/orientation and iPad assistive-technology coverage, trusted HTTPS PWA acceptance, macOS host validation, human Windows shortcut/firewall acceptance, 30-minute device soak, and parent acceptance remain open.
+- The current hardening run passes TypeScript/build, 95 Vitest tests, 47 Playwright checks, canonical 59-asset validation, a sub-17 MiB `ReleaseManifestV2`, deterministic service-worker upgrade/failure coverage, gateway smoke, and network-disabled Mow/Vacuum replay. Activity-scoped loading, two-client cold start, exact selected generated-yard/room continuity, all controls, responsive accessibility ownership, production gateway health/QR smoke, real unfolded Fold history, measured frame pacing, and animated soak automation are covered. Controlled listening, physical folded/orientation and iPad assistive-technology coverage, trusted HTTPS PWA acceptance, macOS host validation, human Windows shortcut/firewall acceptance, 30-minute device soak, and parent acceptance remain open.
 
 ## What already exists
 
@@ -115,7 +115,7 @@ Deliverables:
 - [~] Capture Fold evidence through ADB/CDP: CSS viewport, DPR, device posture, screenshots, real movement/progress, frame metrics, heap, and console errors are recorded manually; `scripts/fold-check.mjs` is reusable, while a current physical folded pass remains.
 - [x] Capture current mowing and vacuum touch baselines before further behavior edits.
 
-Gate: TypeScript, 93 tests, build, 47-check Playwright flow, service-worker upgrade coverage, production-offline replay, and real unfolded Fold Mow/Vacuum/Home/fullscreen history succeed. Physical folded evidence remains a release-confidence item, not a reason to falsify this gate.
+Gate: TypeScript, 95 tests, build, 47-check Playwright flow, service-worker upgrade coverage, production-offline replay, and real unfolded Fold Mow/Vacuum/Home/fullscreen history succeed. Physical folded evidence remains a release-confidence item, not a reason to falsify this gate.
 
 ### Milestone 1 — shared shell parity
 

@@ -21,6 +21,7 @@ import { ActivityLifecycle } from "../systems/ActivityLifecycle";
 import { resolveDrivePose, type DrivePose } from "../systems/driveMath";
 import { ActivityPad } from "../ui/ActivityPad";
 import { ActivityOverlays } from "../ui/ActivityOverlays";
+import { monotonicElapsedSeconds } from "../systems/helperTiming";
 
 interface ActivePower {
   id: PowerupId;
@@ -38,6 +39,7 @@ export class PlayScene extends Phaser.Scene {
   private helperOn = false;
   private helperRate = 0;
   private helperAcc = 0;
+  private helperLastAtMs = 0;
   private paused = false;
   private celeLayer?: Phaser.GameObjects.Container;
   private powers: ActivePower[] = [];
@@ -195,12 +197,13 @@ export class PlayScene extends Phaser.Scene {
 
   update(_t: number, delta: number): void {
     this.lifecycle.frame(delta);
+    const nowMs = performance.now();
     if (this.paused || this.tutLayer || this.celeLayer) {
+      if (this.helperOn) this.helperLastAtMs = nowMs;
       audio.setThrottle(0, false, 0);
       return;
     }
-    const elapsed = Math.min(0.25, Math.max(0, delta / 1000));
-    const dt = Math.min(0.05, elapsed);
+    const dt = Math.min(0.05, Math.max(0, delta / 1000));
     this.drive.update(dt);
 
     const mulch = this.hasPower("mulcher");
@@ -238,10 +241,10 @@ export class PlayScene extends Phaser.Scene {
     );
 
     if (this.helperOn) {
-      // Finish is a child-facing eight-second promise, not a frame-rate test.
-      // Keep movement/collision on the conservative capped step above, while
-      // advancing the helper from bounded wall time on slower devices.
-      this.helperAcc += this.helperRate * elapsed;
+      // Phaser smooths/caps delta under load. Finish is an eight-second
+      // child-facing promise, so only the helper uses monotonic wall time.
+      this.helperAcc += this.helperRate * monotonicElapsedSeconds(this.helperLastAtMs, nowMs);
+      this.helperLastAtMs = nowMs;
       const n = Math.floor(this.helperAcc);
       if (n > 0) {
         this.helperAcc -= n;
@@ -575,6 +578,7 @@ export class PlayScene extends Phaser.Scene {
     this.helperOn = true;
     this.helperAcc = 0;
     this.helperRate = Math.max(480, this.grass.remainingCount / 8);
+    this.helperLastAtMs = performance.now();
   }
 
   private drawPie(p: number): void {
@@ -713,6 +717,7 @@ export class PlayScene extends Phaser.Scene {
   private togglePause(): void {
     if (this.celeLayer || this.tutLayer) return;
     this.paused = !this.paused;
+    if (this.helperOn) this.helperLastAtMs = performance.now();
     this.drive.abortInput();
     if (!this.paused) {
       this.overlays.dismissPause();

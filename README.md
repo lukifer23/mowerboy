@@ -98,7 +98,7 @@ Parent keys on a computer: **WASD** or arrows.
 | `npm run test:fold -- --url=… --drag=x1,y1,x2,y2` | Attach to an existing Fold Chrome tab for a physical-device touch/screenshot check; never opens a browser |
 | `npm run build` | Production build |
 | `npm run serve` | Build, then LAN preview |
-| `npm run verify` | Catalog/release manifests, service-worker upgrade tests, typecheck, production build, 93 unit tests, 47 browser checks, gateway smoke, and production-offline replay |
+| `npm run verify` | Catalog/release manifests, service-worker upgrade tests, typecheck, production build, 95 unit tests, 47 browser checks, gateway smoke, and production-offline replay |
 
 `.github/workflows/ci.yml` is configured to run build/unit/gateway/worker checks on Ubuntu, Windows, and macOS, a cross-OS release-ID/inventory comparison, plus the Chrome production and exact offline-release gates on Ubuntu for pushes and pull requests to `main`. Soak, gameplay-scale visual review, and physical/manual acceptance remain separate gates.
 

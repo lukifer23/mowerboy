@@ -17,6 +17,7 @@ import { ActivityLifecycle } from "../systems/ActivityLifecycle";
 import { resolveDrivePose, type DrivePose } from "../systems/driveMath";
 import { ActivityPad } from "../ui/ActivityPad";
 import { ActivityOverlays } from "../ui/ActivityOverlays";
+import { monotonicElapsedSeconds } from "../systems/helperTiming";
 
 export class VacuumPlayScene extends Phaser.Scene {
   private room!: RoomLayout;
@@ -34,6 +35,7 @@ export class VacuumPlayScene extends Phaser.Scene {
   private helperOn = false;
   private helperAcc = 0;
   private helperRate = 1;
+  private helperLastAtMs = 0;
   private paused = false;
   private celebrated = false;
   private celeLayer?: Phaser.GameObjects.Container;
@@ -119,12 +121,13 @@ export class VacuumPlayScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.lifecycle.frame(delta);
+    const nowMs = performance.now();
     if (this.paused || this.tutLayer || this.celeLayer) {
+      if (this.helperOn) this.helperLastAtMs = nowMs;
       audio.setVacuumState({ throttle: 0, speed: 0, suctionLoad: 0, brush: this.vacuum.def.rig.brushRoll, floor: this.room?.floorAt(this.vacuum.x, this.vacuum.y) ?? "carpet" });
       return;
     }
-    const elapsed = Math.min(.25, Math.max(0, delta / 1000));
-    const dt = Math.min(.05, elapsed);
+    const dt = Math.min(.05, Math.max(0, delta / 1000));
     this.drive.update(dt);
     const current: DrivePose = { x: this.vacuum.x, y: this.vacuum.y, heading: this.vacuum.heading, speed: this.vacuum.speed };
     const resolved = resolveDrivePose(current, this.vacuum.step(dt), {
@@ -144,9 +147,10 @@ export class VacuumPlayScene extends Phaser.Scene {
       intakeOffset: this.vacuum.intakeOffset, power: suctionOn ? .72 + this.vacuum.def.motor.airflow * .52 : 0,
     }, dt);
     if (this.helperOn) {
-      // Finish keeps its eight-second child-facing duration even when a slow
-      // renderer needs a larger frame delta. Movement remains capped by dt.
-      this.helperAcc += this.helperRate * elapsed;
+      // Keep physics capped above, but make Finish independent of Phaser's
+      // smoothed renderer delta by using monotonic wall time.
+      this.helperAcc += this.helperRate * monotonicElapsedSeconds(this.helperLastAtMs, nowMs);
+      this.helperLastAtMs = nowMs;
       const n = Math.floor(this.helperAcc);
       if (n > 0) { this.helperAcc -= n; if (this.debris.helperStep(n) === 0) this.helperOn = false; }
     }
@@ -219,11 +223,11 @@ export class VacuumPlayScene extends Phaser.Scene {
     if(this.groomLayers.length>5)this.groomLayers.shift()?.destroy();
   }
 
-  private startFinish():void{this.helperOn=true;this.helperAcc=0;this.helperRate=Math.max(24,this.debris.remainingCount/8);}
+  private startFinish():void{this.helperOn=true;this.helperAcc=0;this.helperRate=Math.max(24,this.debris.remainingCount/8);this.helperLastAtMs=performance.now();}
 
   private spawnImpacts(count:number):void{if(save().reducedMotion)return;for(let i=0;i<Math.min(5,count);i++){const a=this.add.circle(this.vacuum.x+Math.cos(this.vacuum.heading)*this.vacuum.intakeOffset,this.vacuum.y+Math.sin(this.vacuum.heading)*this.vacuum.intakeOffset,3,0xffd54f,.9).setDepth(6);this.uiCam.ignore(a);this.impactBits.push(a);this.tweens.add({targets:a,x:a.x+(Math.random()-.5)*50,y:a.y+(Math.random()-.5)*50,alpha:0,scale:.2,duration:260,onComplete:()=>{a.destroy();this.impactBits=this.impactBits.filter(b=>b!==a);}});}}
 
-  private togglePause():void{if(this.celeLayer||this.tutLayer)return;this.paused=!this.paused;this.drive.abortInput();if(!this.paused){this.overlays.dismissPause();return;}this.overlays.showPause(()=>this.togglePause());}
+  private togglePause():void{if(this.celeLayer||this.tutLayer)return;this.paused=!this.paused;if(this.helperOn)this.helperLastAtMs=performance.now();this.drive.abortInput();if(!this.paused){this.overlays.dismissPause();return;}this.overlays.showPause(()=>this.togglePause());}
 
   private showTutorial():void{this.overlays.showTutorial([COPY.vacuumTutorial1,COPY.vacuumTutorial2,COPY.vacuumTutorial3],0x80deea,()=>{save().seenVacuumTutorial=true;persist();});}
 
