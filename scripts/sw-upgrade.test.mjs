@@ -318,3 +318,41 @@ function varyDiffers(storedRequest, incomingRequest, response) {
 }
 function jsonResponse(value) { return new Response(JSON.stringify(value), { headers: { "content-type": "application/json" } }); }
 function mime(path) { return path.endsWith(".html") ? "text/html" : path.endsWith(".js") ? "text/javascript" : "application/octet-stream"; }
+
+
+test("restaging a retained release reuses verified packs without destroying rollback", async () => {
+  const harness = createHarness();
+  const v1 = release("1111111111111111", "retained");
+  const v2 = release("2222222222222222", "active");
+  harness.serve(v1);
+  await harness.installAndActivate();
+  harness.serve(v2);
+  await harness.installAndActivate();
+  harness.serve(v1);
+  const previousNetworkCount = harness.networkRequests.length;
+  harness.failPut = (cacheName) => cacheName.startsWith(`mowerboy-release-${v1.releaseId}-`);
+  await harness.install();
+  harness.failPut = null;
+  assert.deepEqual(harness.networkRequests.slice(previousNetworkCount), [new URL("./release-manifest.json", origin).href]);
+  assert.equal((await harness.state()).activeReleaseId, v2.releaseId, "staging does not change active release");
+  assert.equal(await harness.hasCache(`mowerboy-release-${v1.releaseId}-core`), true);
+  assert.equal((await harness.rollback()).ok, true);
+  const response = await harness.dispatchFetch("./", { mode: "navigate" });
+  assert.equal(await response.text(), "<html>retained</html>");
+});
+
+test("reinstalling the active release is idempotent and rechecks retained bytes", async () => {
+  const harness = createHarness();
+  const v1 = release("aaaaaaaaaaaaaaaa", "active");
+  harness.serve(v1);
+  await harness.installAndActivate();
+  await harness.installAndActivate();
+  assert.equal((await harness.state()).previousReleaseId, null);
+  await harness.assertInventory(v1);
+  const core = await harness.cache(`mowerboy-release-${v1.releaseId}-core`);
+  await core.put(new URL("./app.js", origin), new Response("corrupt cache"));
+  await assert.rejects(harness.install(), /Retained release failed verification/);
+  assert.equal(await harness.hasCache(`mowerboy-release-${v1.releaseId}-core`), true);
+  assert.equal((await harness.state()).activeReleaseId, v1.releaseId);
+  assert.equal(await (await core.match(new URL("./index.html", origin))).text(), "<html>active</html>");
+});

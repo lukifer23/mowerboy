@@ -31,9 +31,35 @@ async function stageRelease() {
   const manifest = await response.clone().json();
   validateManifest(manifest);
 
+  const currentState = await readState();
+  const retainedPacks = manifest.releaseId === currentState.activeReleaseId
+    ? currentState.activePacks ?? []
+    : manifest.releaseId === currentState.previousReleaseId
+      ? currentState.previousPacks ?? []
+      : [];
   const availablePacks = [];
   for (const pack of PACKS) {
     const cacheName = releaseCacheName(manifest.releaseId, pack);
+    // Never delete a pack that the active worker or rollback still uses.
+    // Its content-addressed release can be reused after rechecking every byte.
+    if (retainedPacks.includes(pack)) {
+      const cache = await caches.open(cacheName);
+      for (const entry of manifest.packs[pack]) {
+        const response = await cache.match(new URL(entry.path, self.registration.scope), { ignoreVary: true });
+        if (!response) throw new Error(`Retained release is missing ${entry.path}`);
+        const bytes = await response.arrayBuffer();
+        if (bytes.byteLength !== entry.bytes || bytesToHex(await crypto.subtle.digest("SHA-256", bytes)) !== entry.sha256) {
+          throw new Error(`Retained release failed verification for ${entry.path}`);
+        }
+      }
+      if (pack === "core") {
+        const shell = await cache.match(new URL("./", self.registration.scope), { ignoreVary: true });
+        const index = await cache.match(new URL("./index.html", self.registration.scope), { ignoreVary: true });
+        if (!shell || !index || await shell.text() !== await index.text()) throw new Error("Retained release shell is missing or inconsistent");
+      }
+      availablePacks.push(pack);
+      continue;
+    }
     await caches.delete(cacheName);
     try {
       const cache = await caches.open(cacheName);
